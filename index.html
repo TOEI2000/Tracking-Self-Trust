@@ -37,7 +37,6 @@
     <script type="text/babel" data-presets="react">
         const { useState, useEffect, useMemo, useRef } = React;
 
-        // --- Firebase Config ---
         const firebaseConfig = {
             apiKey: "AIzaSyDxZN7QIusq7YwHfFEcNMx447A9nzJkYqA",
             authDomain: "actrandomapp.firebaseapp.com",
@@ -54,16 +53,16 @@
         const generateId = () => Math.random().toString(36).substr(2, 9);
         const getTodayStr = () => new Date().toLocaleDateString('en-CA'); 
         
-        const isSameWeek = (dateStr1, dateStr2) => {
-            const getMonday = (d) => {
-                const date = new Date(d);
-                const day = date.getDay() || 7;
-                date.setHours(0,0,0,0);
-                date.setDate(date.getDate() - day + 1);
-                return date.getTime();
-            };
-            return getMonday(dateStr1) === getMonday(dateStr2);
+        // ฟังก์ชันหาปุ่มจันทร์ของสัปดาห์นั้นๆ เพื่อใช้แบ่งสัปดาห์
+        const getMondayTime = (dateStr) => {
+            const date = new Date(dateStr);
+            const day = date.getDay() || 7;
+            date.setHours(0,0,0,0);
+            date.setDate(date.getDate() - day + 1);
+            return date.getTime();
         };
+
+        const isSameWeek = (d1, d2) => getMondayTime(d1) === getMondayTime(d2);
 
         const Icon = ({ name, className = "w-6 h-6" }) => {
             const icons = {
@@ -73,7 +72,6 @@
                 chart: <path d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />,
                 check: <path d="M5 13l4 4L19 7" />,
                 skip: <path d="M11.933 12.8a1 1 0 000-1.6L6.6 7.2A1 1 0 005 8v8a1 1 0 001.6.8l5.333-4zM19.933 12.8a1 1 0 000-1.6l-5.333-4A1 1 0 0013 8v8a1 1 0 001.6.8l5.333-4z" />,
-                cloud: <path d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z" />,
                 left: <path d="M15 19l-7-7 7-7" />,
                 right: <path d="M9 5l7 7-7 7" />
             };
@@ -106,8 +104,8 @@
 
             return (
                 <div className="max-w-md mx-auto relative min-h-screen border-x border-slate-800 shadow-2xl bg-dark flex flex-col">
-                    <header className="pt-6 pb-3 px-6 border-b border-slate-800 bg-dark/80 backdrop-blur sticky top-0 z-30 flex justify-between items-center">
-                        <h1 className="text-2xl font-bold bg-gradient-to-r from-emerald-400 to-teal-400 bg-clip-text text-transparent">Self-Trust</h1>
+                    <header className="pt-6 pb-3 px-6 border-b border-slate-800 bg-dark/80 backdrop-blur sticky top-0 z-30">
+                        <h1 className="text-2xl font-bold bg-gradient-to-r from-emerald-400 to-teal-400 bg-clip-text text-transparent text-center">Self-Trust</h1>
                     </header>
                     <main className="flex-1 p-4 overflow-x-hidden">
                         {isInitialLoadDone ? (
@@ -117,7 +115,7 @@
                                 {tab === 'reflection' && <Reflection reflections={reflections} setReflections={setReflections} />}
                                 {tab === 'stats' && <Stats activities={activities} records={records} reflections={reflections} />}
                             </>
-                        ) : ( <div className="text-center mt-20 text-slate-500">Connecting...</div> )}
+                        ) : ( <div className="text-center mt-20 text-slate-500">Syncing...</div> )}
                     </main>
                     <nav className="fixed bottom-0 w-full max-w-md bg-card border-t border-slate-700 flex justify-around py-3 px-2 z-40 pb-safe">
                         {[{id:'dashboard',icon:'home',label:'Wall'},{id:'reflection',icon:'sun',label:'Reflect'},{id:'stats',icon:'chart',label:'Log'},{id:'settings',icon:'settings',label:'Setup'}].map(item => (
@@ -151,13 +149,13 @@
                 return activities.filter(a => !a.archived).filter(a => {
                     if (a.freqType === 'daily') return true;
                     if (a.freqType === 'specific') return a.freqDays.includes(selDay);
-                    if (a.freqType === 'weekly') return true; // แสดงกิจกรรมรายสัปดาห์เสมอเพื่อดูสถานะ success
+                    if (a.freqType === 'weekly') return true;
                     return true;
                 });
-            }, [activities, records, selectedDate]);
+            }, [activities, selectedDate]);
 
             const handleToggle = (activityId, isLocked) => {
-                if (isLocked) return; // ล็อคปุ่มหากสำเร็จเป้าหมายสัปดาห์แล้ว
+                if (isLocked) return;
                 const existing = records.find(r => r.activityId === activityId && r.date === selectedDate);
                 if (existing) {
                     setRecords(records.filter(r => r.id !== existing.id));
@@ -183,48 +181,60 @@
 
                     <div className="space-y-3">
                         {dueActivities.map(activity => {
-                            const record = records.find(r => r.activityId === activity.id && r.date === selectedDate);
-                            const doneOnDay = record?.status === 'completed';
-                            const isSkipped = record?.status === 'skipped';
+                            const recordOnDay = records.find(r => r.activityId === activity.id && r.date === selectedDate);
+                            const doneToday = recordOnDay?.status === 'completed';
+                            const isSkipped = recordOnDay?.status === 'skipped';
                             
-                            // คำนวณความคืบหน้ารายสัปดาห์
+                            // นับจำนวนครั้งที่ทำสำเร็จในสัปดาห์ของวันที่เลือก
+                            const totalDoneThisWeek = records.filter(r => 
+                                r.activityId === activity.id && 
+                                r.status === 'completed' && 
+                                isSameWeek(r.date, selectedDate)
+                            ).length;
+
                             let label = "";
-                            let isGoalMetThisWeek = false;
+                            let isGoalMet = false;
+
                             if (activity.freqType === 'weekly') {
-                                const countThisWeek = records.filter(r => r.activityId === activity.id && r.status === 'completed' && isSameWeek(r.date, selectedDate)).length;
-                                isGoalMetThisWeek = countThisWeek >= activity.freqCount;
+                                isGoalMet = totalDoneThisWeek >= activity.freqCount;
                                 
-                                if (isGoalMetThisWeek) {
+                                if (isGoalMet) {
+                                    // ถ้าครบแล้ว แสดงเป้าหมายสูงสุด เช่น (3/3)
                                     label = `(${activity.freqCount}/${activity.freqCount})`;
                                 } else {
-                                    // ถ้ายังไม่ทำเลยขึ้น 1/3, ทำแล้ว 1 ครั้งขึ้น 2/3 (ตามเงื่อนไขคุณ)
-                                    label = `(${countThisWeek + 1}/${activity.freqCount})`;
+                                    // ถ้ายังไม่ครบ
+                                    if (doneToday) {
+                                        // ถ้าติ๊กของวันนี้ไปแล้ว เลขจะแสดงลำดับปัจจุบัน เช่น (1/3)
+                                        label = `(${totalDoneThisWeek}/${activity.freqCount})`;
+                                    } else {
+                                        // ถ้ายังไม่ติ๊กของวันนี้ เลขจะแสดงลำดับที่กำลังจะทำ เช่น (2/3)
+                                        label = `(${totalDoneThisWeek + 1}/${activity.freqCount})`;
+                                    }
                                 }
                             }
 
-                            // เงื่อนไขการล็อค: เป้าหมายสัปดาห์ครบแล้ว และ วันนี้ไม่ได้ถูกติ๊กไว้ (ล็อคไม่ให้ติ๊กเพิ่ม)
-                            // หรือ ถ้าเป้าหมายครบแล้วแต่เป็นของวันอื่น ปุ่มในวันอื่นๆ จะกดไม่ได้
-                            const isLocked = isGoalMetThisWeek && !doneOnDay;
-                            const showAsSuccess = isGoalMetThisWeek || doneOnDay;
+                            // ล็อคปุ่มถ้าเป้าหมายสัปดาห์ครบแล้ว และไม่ใช่การกดเพื่อยกเลิกของวันนี้
+                            const isLocked = isGoalMet && !doneToday;
+                            const shouldStrike = isGoalMet || doneToday;
 
                             return (
-                                <div key={activity.id} className={"p-4 rounded-2xl border transition-all " + (showAsSuccess ? "bg-primary/10 border-primary/30" : isSkipped ? "opacity-50" : "bg-card border-slate-700")}>
+                                <div key={activity.id} className={"p-4 rounded-2xl border transition-all " + (shouldStrike ? "bg-primary/10 border-primary/30" : isSkipped ? "opacity-50" : "bg-card border-slate-700")}>
                                     <div className="flex items-center justify-between">
                                         <div className="flex items-center gap-4 flex-1">
                                             <button 
                                                 onClick={() => handleToggle(activity.id, isLocked)} 
-                                                className={"w-9 h-9 rounded-full border-2 flex items-center justify-center " + (doneOnDay ? "bg-primary border-primary text-dark" : isLocked ? "border-slate-700 bg-slate-800 text-slate-600 cursor-not-allowed" : "border-slate-500")}>
-                                                {doneOnDay && <Icon name="check" className="w-6 h-6" />}
-                                                {isLocked && !doneOnDay && <span className="text-[8px] font-bold">MAX</span>}
+                                                className={"w-9 h-9 rounded-full border-2 flex items-center justify-center " + (doneToday ? "bg-primary border-primary text-dark" : isLocked ? "border-slate-800 bg-slate-800 text-slate-600 cursor-not-allowed" : "border-slate-500")}>
+                                                {doneToday && <Icon name="check" className="w-6 h-6" />}
+                                                {isLocked && <span className="text-[8px] font-bold">DONE</span>}
                                             </button>
                                             <div className="flex-1">
-                                                <h3 className={"font-medium " + (showAsSuccess ? "line-through text-slate-400" : "text-slate-100")}>
-                                                    {activity.name} <span className="text-xs ml-1 opacity-70">{label}</span>
+                                                <h3 className={"font-medium " + (shouldStrike ? "line-through text-slate-400" : "text-slate-100")}>
+                                                    {activity.name} <span className="text-xs ml-1 font-mono opacity-80">{label}</span>
                                                 </h3>
-                                                <p className="text-[10px] text-slate-500 uppercase">{activity.identity}</p>
+                                                <p className="text-[10px] text-slate-500 uppercase tracking-wider">{activity.identity}</p>
                                             </div>
                                         </div>
-                                        {!showAsSuccess && !isSkipped && (
+                                        {!shouldStrike && !isSkipped && (
                                             <button onClick={() => setSkipModal({ show: true, activityId: activity.id, reason: '' })} className="p-2 text-slate-500"><Icon name="skip" className="w-5 h-5" /></button>
                                         )}
                                     </div>
@@ -235,15 +245,15 @@
 
                     {skipModal.show && (
                         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-                            <div className="bg-card w-full max-w-sm rounded-3xl p-6 border border-slate-700">
-                                <h3 className="text-xl font-bold mb-4">Reason to skip?</h3>
-                                <input type="text" className="w-full bg-dark border border-slate-600 rounded-xl p-3 text-white mb-6 outline-none" autoFocus value={skipModal.reason} onChange={(e) => setSkipModal({...skipModal, reason: e.target.value})} />
+                            <div className="bg-card w-full max-w-sm rounded-3xl p-6 border border-slate-700 shadow-2xl">
+                                <h3 className="text-xl font-bold mb-4">ระบุเหตุผลที่ข้าม</h3>
+                                <input type="text" className="w-full bg-dark border border-slate-600 rounded-xl p-3 text-white mb-6 outline-none focus:border-orange-500" autoFocus value={skipModal.reason} onChange={(e) => setSkipModal({...skipModal, reason: e.target.value})} />
                                 <div className="flex gap-3">
-                                    <button onClick={() => setSkipModal({show:false})} className="flex-1 py-3 rounded-xl bg-slate-700">Cancel</button>
+                                    <button onClick={() => setSkipModal({show:false})} className="flex-1 py-3 rounded-xl bg-slate-700">ยกเลิก</button>
                                     <button onClick={() => {
                                         setRecords([...records, { id: generateId(), activityId: skipModal.activityId, date: selectedDate, status: 'skipped', reason: skipModal.reason, timestamp: Date.now() }]);
                                         setSkipModal({show:false});
-                                    }} className="flex-1 py-3 rounded-xl bg-orange-500 font-bold">Skip</button>
+                                    }} className="flex-1 py-3 rounded-xl bg-orange-500 font-bold">บันทึก</button>
                                 </div>
                             </div>
                         </div>
@@ -254,27 +264,29 @@
 
         function Settings({ activities, setActivities }) {
             const [form, setForm] = useState({ name: '', freqType: 'daily', freqDays: [], freqCount: 1, identity: '' });
-            const days = [{ id: 1, label: 'จ.' }, { id: 2, label: 'อ.' }, { id: 3, label: 'พ.' }, { id: 4, label: 'พฤ.' }, { id: 5, label: 'ศ.' }, { id: 6, label: 'ส.' }, { id: 0, label: 'อา.' }];
             return (
                 <div className="fade-in space-y-6 pb-10">
                     <div className="bg-card p-5 rounded-3xl border border-slate-700">
-                        <h2 className="text-lg font-semibold mb-4">Add Habit</h2>
+                        <h2 className="text-lg font-semibold mb-4">ตั้งค่ากิจกรรม</h2>
                         <div className="space-y-4">
-                            <input type="text" value={form.name} onChange={e => setForm({...form, name: e.target.value})} className="w-full bg-dark border border-slate-600 rounded-xl p-3 text-sm" placeholder="Habit Name" />
-                            <input type="text" value={form.identity} onChange={e => setForm({...form, identity: e.target.value})} className="w-full bg-dark border border-slate-600 rounded-xl p-3 text-sm" placeholder="Identity (I am...)" />
+                            <input type="text" value={form.name} onChange={e => setForm({...form, name: e.target.value})} className="w-full bg-dark border border-slate-600 rounded-xl p-3 text-sm" placeholder="ชื่อกิจกรรม" />
+                            <input type="text" value={form.identity} onChange={e => setForm({...form, identity: e.target.value})} className="w-full bg-dark border border-slate-600 rounded-xl p-3 text-sm" placeholder="Identity Label (ฉันคือ...)" />
                             <div className="flex gap-2">
                                 {['daily', 'specific', 'weekly'].map(type => (
                                     <button key={type} onClick={() => setForm({...form, freqType: type})} className={"flex-1 py-2 rounded-lg border text-xs capitalize " + (form.freqType === type ? "bg-primary/20 border-primary text-primary" : "border-slate-600 text-slate-500")}>{type}</button>
                                 ))}
                             </div>
-                            {form.freqType === 'weekly' && <input type="number" min="1" max="7" value={form.freqCount} onChange={e => setForm({...form, freqCount: parseInt(e.target.value)})} className="w-full bg-dark border border-slate-600 rounded-xl p-3 text-sm" placeholder="Times per week" />}
-                            <button onClick={() => { if(form.name) { setActivities([...activities, {...form, id:generateId(), archived:false}]); setForm({name:'',freqType:'daily',freqDays:[],freqCount:1,identity:''}); } }} className="w-full bg-primary text-dark font-bold py-3 rounded-xl">Save</button>
+                            {form.freqType === 'weekly' && <input type="number" min="1" max="7" value={form.freqCount} onChange={e => setForm({...form, freqCount: parseInt(e.target.value)})} className="w-full bg-dark border border-slate-600 rounded-xl p-3 text-sm" placeholder="จำนวนครั้งต่อสัปดาห์" />}
+                            <button onClick={() => { if(form.name) { setActivities([...activities, {...form, id:generateId(), archived:false}]); setForm({name:'',freqType:'daily',freqDays:[],freqCount:1,identity:''}); } }} className="w-full bg-primary text-dark font-bold py-3 rounded-xl">เพิ่มกิจกรรม</button>
                         </div>
                     </div>
                     {activities.filter(a=>!a.archived).map(a => (
-                        <div key={a.id} className="p-4 bg-card rounded-xl border border-slate-700 flex justify-between items-center text-sm">
-                            <span>{a.name} ({a.freqType})</span>
-                            <button onClick={() => setActivities(activities.map(x=>x.id===a.id?{...x,archived:true}:x))}><Icon name="archive" className="w-5 h-5 text-slate-500"/></button>
+                        <div key={a.id} className="p-4 bg-card rounded-xl border border-slate-700 flex justify-between items-center text-sm shadow-sm">
+                            <div className="flex flex-col">
+                                <span className="font-bold">{a.name}</span>
+                                <span className="text-[10px] text-slate-500">{a.freqType} {a.freqType==='weekly' && `(${a.freqCount} ครั้ง/สัปดาห์)`}</span>
+                            </div>
+                            <button onClick={() => setActivities(activities.map(x=>x.id===a.id?{...x,archived:true}:x))} className="p-2 text-slate-500 hover:text-red-400">ลบ</button>
                         </div>
                     ))}
                 </div>
@@ -284,14 +296,14 @@
         function Reflection({ reflections, setReflections }) {
             const [score, setScore] = useState(0);
             return (
-                <div className="fade-in p-6 bg-gradient-to-br from-blue-900/40 to-indigo-900/40 rounded-3xl border border-blue-800/30">
-                    <h2 className="text-xl font-bold mb-6">Sunday Reflection</h2>
-                    <div className="flex gap-2 justify-center mb-10">
+                <div className="fade-in p-6 bg-card rounded-3xl border border-slate-700 shadow-xl">
+                    <h2 className="text-xl font-bold mb-6 text-center text-emerald-400">Sunday Reflection</h2>
+                    <div className="flex gap-3 justify-center mb-10">
                         {[1,2,3,4,5].map(s => (
-                            <button key={s} onClick={() => setScore(s)} className={"w-12 h-12 rounded-full font-bold " + (score === s ? "bg-blue-500" : "bg-slate-800 text-slate-500")}>{s}</button>
+                            <button key={s} onClick={() => setScore(s)} className={"w-12 h-12 rounded-full font-bold transition-all " + (score === s ? "bg-primary text-dark shadow-lg scale-110" : "bg-slate-800 text-slate-500")}>{s}</button>
                         ))}
                     </div>
-                    <button onClick={() => { if(score) { setReflections([{id:generateId(), date:getTodayStr(), identityScore:score}, ...reflections]); setScore(0); alert('Saved!'); } }} className="w-full bg-blue-600 font-bold py-4 rounded-xl shadow-lg">Save Reflection</button>
+                    <button onClick={() => { if(score) { setReflections([{id:generateId(), date:getTodayStr(), identityScore:score}, ...reflections]); setScore(0); alert('บันทึกเรียบร้อย!'); } }} className="w-full bg-primary text-dark font-bold py-4 rounded-xl shadow-lg hover:opacity-90">บันทึกผลสะท้อนตนเอง</button>
                 </div>
             );
         }
@@ -301,16 +313,19 @@
             return (
                 <div className="fade-in space-y-4 pb-20">
                     {allDates.map(date => (
-                        <div key={date} className="bg-card p-4 rounded-2xl border border-slate-700">
-                            <h3 className="text-emerald-400 font-bold text-xs mb-2">{new Date(date).toLocaleDateString('th-TH',{dateStyle:'medium'})}</h3>
-                            {records.filter(r => r.date === date).map(r => (
-                                <div key={r.id} className="text-sm text-slate-300 flex gap-2">
-                                    <span>{r.status === 'completed' ? '✅' : '⏭️'}</span>
-                                    <span>{activities.find(a=>a.id===r.activityId)?.name}</span>
-                                </div>
-                            ))}
+                        <div key={date} className="bg-card p-4 rounded-2xl border border-slate-700 shadow-md">
+                            <h3 className="text-primary font-bold text-xs mb-3 border-b border-slate-800 pb-2">{new Date(date).toLocaleDateString('th-TH',{dateStyle:'medium'})}</h3>
+                            <div className="space-y-1">
+                                {records.filter(r => r.date === date).map(r => (
+                                    <div key={r.id} className="text-sm text-slate-300 flex items-center gap-2">
+                                        <span className="text-[10px]">{r.status === 'completed' ? '✅' : '⏭️'}</span>
+                                        <span>{activities.find(a=>a.id===r.activityId)?.name}</span>
+                                    </div>
+                                ))}
+                            </div>
                         </div>
                     ))}
+                    {allDates.length === 0 && <div className="text-center text-slate-600 mt-20">ยังไม่มีข้อมูลในระบบ</div>}
                 </div>
             );
         }
