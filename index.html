@@ -37,7 +37,7 @@
     <script type="text/babel" data-presets="react">
         const { useState, useEffect, useMemo, useRef } = React;
 
-        // --- Firebase Initialization ---
+        // --- Firebase Config ---
         const firebaseConfig = {
             apiKey: "AIzaSyDxZN7QIusq7YwHfFEcNMx447A9nzJkYqA",
             authDomain: "actrandomapp.firebaseapp.com",
@@ -47,13 +47,10 @@
             appId: "1:626302954284:web:f2760bc105cf1545df1a89"
         };
         
-        if (!firebase.apps.length) {
-            firebase.initializeApp(firebaseConfig);
-        }
+        if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
         const userDocRef = db.collection('selftrust_users').doc('my_sync_data');
 
-        // --- Helpers ---
         const generateId = () => Math.random().toString(36).substr(2, 9);
         const getTodayStr = () => new Date().toLocaleDateString('en-CA'); 
         
@@ -76,7 +73,6 @@
                 chart: <path d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />,
                 check: <path d="M5 13l4 4L19 7" />,
                 skip: <path d="M11.933 12.8a1 1 0 000-1.6L6.6 7.2A1 1 0 005 8v8a1 1 0 001.6.8l5.333-4zM19.933 12.8a1 1 0 000-1.6l-5.333-4A1 1 0 0013 8v8a1 1 0 001.6.8l5.333-4z" />,
-                archive: <path d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />,
                 cloud: <path d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z" />,
                 left: <path d="M15 19l-7-7 7-7" />,
                 right: <path d="M9 5l7 7-7 7" />
@@ -89,11 +85,8 @@
             const [activities, setActivities] = useState([]);
             const [records, setRecords] = useState([]);
             const [reflections, setReflections] = useState([]);
-            
-            const [syncStatus, setSyncStatus] = useState('loading'); // loading, idle, saving
             const [isInitialLoadDone, setIsInitialLoadDone] = useState(false);
 
-            // 1. โหลดข้อมูลครั้งแรก (จาก Firebase ถ้ามี ถ้าไม่มีเอาจาก LocalStorage)
             useEffect(() => {
                 userDocRef.get().then(doc => {
                     if (doc.exists) {
@@ -101,53 +94,21 @@
                         setActivities(data.activities || []);
                         setRecords(data.records || []);
                         setReflections(data.reflections || []);
-                    } else {
-                        // Fallback to LocalStorage
-                        setActivities(JSON.parse(localStorage.getItem('st_activities') || '[]'));
-                        setRecords(JSON.parse(localStorage.getItem('st_records') || '[]'));
-                        setReflections(JSON.parse(localStorage.getItem('st_reflections') || '[]'));
                     }
                     setIsInitialLoadDone(true);
-                    setSyncStatus('idle');
-                }).catch(err => {
-                    console.error("Firebase Error:", err);
-                    alert("ไม่สามารถเชื่อมต่อฐานข้อมูลได้ กรุณาเช็ค Security Rules ใน Firebase");
                 });
             }, []);
 
-            // 2. ซิงค์ข้อมูลขึ้น Firebase และ LocalStorage เมื่อมีการเปลี่ยนแปลง
             useEffect(() => {
                 if (!isInitialLoadDone) return;
-                
-                setSyncStatus('saving');
-                
-                // Backup ไว้ในเครื่องด้วยเผื่อเน็ตหลุด
-                localStorage.setItem('st_activities', JSON.stringify(activities));
-                localStorage.setItem('st_records', JSON.stringify(records));
-                localStorage.setItem('st_reflections', JSON.stringify(reflections));
-
-                // Save to Cloud
-                userDocRef.set({ activities, records, reflections })
-                    .then(() => setSyncStatus('idle'))
-                    .catch(err => console.error("Sync error:", err));
-
+                userDocRef.set({ activities, records, reflections });
             }, [activities, records, reflections, isInitialLoadDone]);
 
             return (
                 <div className="max-w-md mx-auto relative min-h-screen border-x border-slate-800 shadow-2xl bg-dark flex flex-col">
                     <header className="pt-6 pb-3 px-6 border-b border-slate-800 bg-dark/80 backdrop-blur sticky top-0 z-30 flex justify-between items-center">
-                        <div>
-                            <h1 className="text-2xl font-bold bg-gradient-to-r from-emerald-400 to-teal-400 bg-clip-text text-transparent">Self-Trust</h1>
-                        </div>
-                        <div className="flex items-center gap-1 text-slate-400">
-                            {syncStatus === 'saving' ? (
-                                <span className="flex items-center gap-1 text-xs text-blue-400"><Icon name="cloud" className="w-4 h-4 animate-pulse" /> ซิงค์...</span>
-                            ) : syncStatus === 'idle' ? (
-                                <span className="flex items-center gap-1 text-xs text-emerald-500"><Icon name="cloud" className="w-4 h-4" /> อัปเดตแล้ว</span>
-                            ) : null}
-                        </div>
+                        <h1 className="text-2xl font-bold bg-gradient-to-r from-emerald-400 to-teal-400 bg-clip-text text-transparent">Self-Trust</h1>
                     </header>
-
                     <main className="flex-1 p-4 overflow-x-hidden">
                         {isInitialLoadDone ? (
                             <>
@@ -156,18 +117,10 @@
                                 {tab === 'reflection' && <Reflection reflections={reflections} setReflections={setReflections} />}
                                 {tab === 'stats' && <Stats activities={activities} records={records} reflections={reflections} />}
                             </>
-                        ) : (
-                            <div className="flex justify-center items-center h-40 text-slate-400">กำลังเชื่อมต่อข้อมูล...</div>
-                        )}
+                        ) : ( <div className="text-center mt-20 text-slate-500">Connecting...</div> )}
                     </main>
-
                     <nav className="fixed bottom-0 w-full max-w-md bg-card border-t border-slate-700 flex justify-around py-3 px-2 z-40 pb-safe">
-                        {[
-                            { id: 'dashboard', icon: 'home', label: 'Wall' },
-                            { id: 'reflection', icon: 'sun', label: 'Reflect' },
-                            { id: 'stats', icon: 'chart', label: 'Log' },
-                            { id: 'settings', icon: 'settings', label: 'Setup' }
-                        ].map(item => (
+                        {[{id:'dashboard',icon:'home',label:'Wall'},{id:'reflection',icon:'sun',label:'Reflect'},{id:'stats',icon:'chart',label:'Log'},{id:'settings',icon:'settings',label:'Setup'}].map(item => (
                             <button key={item.id} onClick={() => setTab(item.id)} className={"flex flex-col items-center p-2 rounded-xl transition-colors " + (tab === item.id ? "text-primary" : "text-slate-500")}>
                                 <Icon name={item.icon} className="w-6 h-6 mb-1" />
                                 <span className="text-[10px] font-medium">{item.label}</span>
@@ -186,19 +139,11 @@
             const dateList = useMemo(() => {
                 const dates = [];
                 for (let i = 0; i < 14; i++) {
-                    const d = new Date();
-                    d.setDate(d.getDate() - i);
+                    const d = new Date(); d.setDate(d.getDate() - i);
                     dates.push(d.toLocaleDateString('en-CA'));
                 }
-                return dates.reverse(); // เรียงจากอดีต -> ปัจจุบัน
+                return dates.reverse();
             }, []);
-
-            // Scroll ลูกศร
-            const scrollNav = (direction) => {
-                if(scrollRef.current) {
-                    scrollRef.current.scrollBy({ left: direction * 150, behavior: 'smooth' });
-                }
-            };
 
             const dueActivities = useMemo(() => {
                 const selDate = new Date(selectedDate);
@@ -206,16 +151,13 @@
                 return activities.filter(a => !a.archived).filter(a => {
                     if (a.freqType === 'daily') return true;
                     if (a.freqType === 'specific') return a.freqDays.includes(selDay);
-                    if (a.freqType === 'weekly') {
-                        const countInWeek = records.filter(r => r.activityId === a.id && r.status === 'completed' && isSameWeek(r.date, selectedDate)).length;
-                        const doneOnDay = records.some(r => r.activityId === a.id && r.date === selectedDate && r.status === 'completed');
-                        return doneOnDay || countInWeek < a.freqCount;
-                    }
+                    if (a.freqType === 'weekly') return true; // แสดงกิจกรรมรายสัปดาห์เสมอเพื่อดูสถานะ success
                     return true;
                 });
             }, [activities, records, selectedDate]);
 
-            const handleToggle = (activityId) => {
+            const handleToggle = (activityId, isLocked) => {
+                if (isLocked) return; // ล็อคปุ่มหากสำเร็จเป้าหมายสัปดาห์แล้ว
                 const existing = records.find(r => r.activityId === activityId && r.date === selectedDate);
                 if (existing) {
                     setRecords(records.filter(r => r.id !== existing.id));
@@ -224,88 +166,84 @@
                 }
             };
 
-            const confirmSkip = () => {
-                if(!skipModal.reason.trim()) return;
-                setRecords([...records, { id: generateId(), activityId: skipModal.activityId, date: selectedDate, status: 'skipped', reason: skipModal.reason, timestamp: Date.now() }]);
-                setSkipModal({ show: false, activityId: null, reason: '' });
-            };
-
             return (
                 <div className="fade-in space-y-6 pb-10">
-                    {/* Date Selector แบบมีลูกศร */}
-                    <div className="bg-card rounded-2xl p-1 border border-slate-700 shadow-inner flex items-center">
-                        <button onClick={() => scrollNav(-1)} className="p-2 text-slate-400 hover:text-white"><Icon name="left" className="w-5 h-5" /></button>
-                        
-                        <div className="flex-1 flex overflow-x-auto no-scrollbar gap-2 px-1 py-1 scroll-smooth" ref={scrollRef}>
-                            {dateList.map(dateStr => {
-                                const d = new Date(dateStr);
-                                const isSelected = selectedDate === dateStr;
-                                const hasRecords = records.some(r => r.date === dateStr);
-                                return (
-                                    <button 
-                                        key={dateStr} 
-                                        onClick={() => setSelectedDate(dateStr)}
-                                        className={"flex-shrink-0 w-12 py-3 rounded-xl flex flex-col items-center transition-all " + (isSelected ? "bg-primary text-dark font-bold shadow-lg" : "bg-dark/50 text-slate-400")}
-                                    >
-                                        <span className="text-[10px] uppercase opacity-70">{d.toLocaleDateString('th-TH', { weekday: 'short' })}</span>
-                                        <span className="text-base">{d.getDate()}</span>
-                                        {hasRecords && !isSelected && <div className="w-1 h-1 bg-primary/60 rounded-full mt-1"></div>}
-                                    </button>
-                                );
-                            })}
+                    <div className="bg-card rounded-2xl p-1 border border-slate-700 flex items-center shadow-inner">
+                        <button onClick={() => scrollRef.current.scrollBy({left:-150,behavior:'smooth'})} className="p-2 text-slate-500"><Icon name="left" className="w-5 h-5"/></button>
+                        <div className="flex-1 flex overflow-x-auto no-scrollbar gap-2 px-1 py-1" ref={scrollRef}>
+                            {dateList.map(dateStr => (
+                                <button key={dateStr} onClick={() => setSelectedDate(dateStr)} className={"flex-shrink-0 w-12 py-3 rounded-xl flex flex-col items-center " + (selectedDate === dateStr ? "bg-primary text-dark font-bold" : "bg-dark/50 text-slate-400")}>
+                                    <span className="text-[10px] uppercase opacity-70">{new Date(dateStr).toLocaleDateString('th-TH',{weekday:'short'})}</span>
+                                    <span className="text-base">{new Date(dateStr).getDate()}</span>
+                                </button>
+                            ))}
                         </div>
-
-                        <button onClick={() => scrollNav(1)} className="p-2 text-slate-400 hover:text-white"><Icon name="right" className="w-5 h-5" /></button>
+                        <button onClick={() => scrollRef.current.scrollBy({left:150,behavior:'smooth'})} className="p-2 text-slate-500"><Icon name="right" className="w-5 h-5"/></button>
                     </div>
 
-                    <div className="text-center">
-                        <p className="text-sm text-slate-400">Viewing Data for</p>
-                        <h2 className="text-lg font-semibold text-emerald-400">
-                            {selectedDate === getTodayStr() ? "Today" : new Date(selectedDate).toLocaleDateString('th-TH', { dateStyle: 'long' })}
-                        </h2>
-                    </div>
-
-                    {/* Missions List */}
                     <div className="space-y-3">
-                        {dueActivities.length === 0 ? (
-                            <p className="text-slate-500 text-center py-10">ไม่มีกิจกรรมที่ต้องทำในวันนี้ 🌟</p>
-                        ) : (
-                            dueActivities.map(activity => {
-                                const record = records.find(r => r.activityId === activity.id && r.date === selectedDate);
-                                const isCompleted = record?.status === 'completed';
-                                const isSkipped = record?.status === 'skipped';
+                        {dueActivities.map(activity => {
+                            const record = records.find(r => r.activityId === activity.id && r.date === selectedDate);
+                            const doneOnDay = record?.status === 'completed';
+                            const isSkipped = record?.status === 'skipped';
+                            
+                            // คำนวณความคืบหน้ารายสัปดาห์
+                            let label = "";
+                            let isGoalMetThisWeek = false;
+                            if (activity.freqType === 'weekly') {
+                                const countThisWeek = records.filter(r => r.activityId === activity.id && r.status === 'completed' && isSameWeek(r.date, selectedDate)).length;
+                                isGoalMetThisWeek = countThisWeek >= activity.freqCount;
+                                
+                                if (isGoalMetThisWeek) {
+                                    label = `(${activity.freqCount}/${activity.freqCount})`;
+                                } else {
+                                    // ถ้ายังไม่ทำเลยขึ้น 1/3, ทำแล้ว 1 ครั้งขึ้น 2/3 (ตามเงื่อนไขคุณ)
+                                    label = `(${countThisWeek + 1}/${activity.freqCount})`;
+                                }
+                            }
 
-                                return (
-                                    <div key={activity.id} className={"p-4 rounded-2xl border transition-all " + (isCompleted ? "bg-primary/10 border-primary/30" : isSkipped ? "bg-slate-800/50 border-slate-700/50 opacity-60" : "bg-card border-slate-700")}>
-                                        <div className="flex items-center justify-between">
-                                            <div className="flex items-center gap-4 flex-1">
-                                                <button onClick={() => handleToggle(activity.id)} disabled={isSkipped} className={"w-9 h-9 rounded-full border-2 flex items-center justify-center transition-colors " + (isCompleted ? "bg-primary border-primary text-dark" : "border-slate-500")}>
-                                                    {isCompleted && <Icon name="check" className="w-6 h-6" />}
-                                                </button>
-                                                <div className="flex-1">
-                                                    <h3 className={"font-medium " + (isCompleted ? "line-through text-slate-400" : "text-slate-100")}>{activity.name}</h3>
-                                                    <p className="text-[10px] text-slate-500 uppercase tracking-tighter">{activity.identity}</p>
-                                                    {isSkipped && <p className="text-xs text-orange-400 mt-1 italic">Skipped: {record.reason}</p>}
-                                                </div>
+                            // เงื่อนไขการล็อค: เป้าหมายสัปดาห์ครบแล้ว และ วันนี้ไม่ได้ถูกติ๊กไว้ (ล็อคไม่ให้ติ๊กเพิ่ม)
+                            // หรือ ถ้าเป้าหมายครบแล้วแต่เป็นของวันอื่น ปุ่มในวันอื่นๆ จะกดไม่ได้
+                            const isLocked = isGoalMetThisWeek && !doneOnDay;
+                            const showAsSuccess = isGoalMetThisWeek || doneOnDay;
+
+                            return (
+                                <div key={activity.id} className={"p-4 rounded-2xl border transition-all " + (showAsSuccess ? "bg-primary/10 border-primary/30" : isSkipped ? "opacity-50" : "bg-card border-slate-700")}>
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-4 flex-1">
+                                            <button 
+                                                onClick={() => handleToggle(activity.id, isLocked)} 
+                                                className={"w-9 h-9 rounded-full border-2 flex items-center justify-center " + (doneOnDay ? "bg-primary border-primary text-dark" : isLocked ? "border-slate-700 bg-slate-800 text-slate-600 cursor-not-allowed" : "border-slate-500")}>
+                                                {doneOnDay && <Icon name="check" className="w-6 h-6" />}
+                                                {isLocked && !doneOnDay && <span className="text-[8px] font-bold">MAX</span>}
+                                            </button>
+                                            <div className="flex-1">
+                                                <h3 className={"font-medium " + (showAsSuccess ? "line-through text-slate-400" : "text-slate-100")}>
+                                                    {activity.name} <span className="text-xs ml-1 opacity-70">{label}</span>
+                                                </h3>
+                                                <p className="text-[10px] text-slate-500 uppercase">{activity.identity}</p>
                                             </div>
-                                            {!isCompleted && !isSkipped && (
-                                                <button onClick={() => setSkipModal({ show: true, activityId: activity.id, reason: '' })} className="p-2 text-slate-500 hover:text-orange-400"><Icon name="skip" className="w-5 h-5" /></button>
-                                            )}
                                         </div>
+                                        {!showAsSuccess && !isSkipped && (
+                                            <button onClick={() => setSkipModal({ show: true, activityId: activity.id, reason: '' })} className="p-2 text-slate-500"><Icon name="skip" className="w-5 h-5" /></button>
+                                        )}
                                     </div>
-                                )
-                            })
-                        )}
+                                </div>
+                            )
+                        })}
                     </div>
 
                     {skipModal.show && (
                         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
                             <div className="bg-card w-full max-w-sm rounded-3xl p-6 border border-slate-700">
-                                <h3 className="text-xl font-bold mb-4">ทำไมถึงข้าม?</h3>
-                                <input type="text" className="w-full bg-dark border border-slate-600 rounded-xl p-3 text-white mb-6 focus:border-primary outline-none" placeholder="เหตุผล (เช่น ป่วย, งานยุ่ง...)" autoFocus value={skipModal.reason} onChange={(e) => setSkipModal({...skipModal, reason: e.target.value})} />
+                                <h3 className="text-xl font-bold mb-4">Reason to skip?</h3>
+                                <input type="text" className="w-full bg-dark border border-slate-600 rounded-xl p-3 text-white mb-6 outline-none" autoFocus value={skipModal.reason} onChange={(e) => setSkipModal({...skipModal, reason: e.target.value})} />
                                 <div className="flex gap-3">
-                                    <button onClick={() => setSkipModal({show: false, activityId: null, reason: ''})} className="flex-1 py-3 rounded-xl bg-slate-700">ยกเลิก</button>
-                                    <button onClick={confirmSkip} className="flex-1 py-3 rounded-xl bg-orange-500 font-bold">บันทึก</button>
+                                    <button onClick={() => setSkipModal({show:false})} className="flex-1 py-3 rounded-xl bg-slate-700">Cancel</button>
+                                    <button onClick={() => {
+                                        setRecords([...records, { id: generateId(), activityId: skipModal.activityId, date: selectedDate, status: 'skipped', reason: skipModal.reason, timestamp: Date.now() }]);
+                                        setSkipModal({show:false});
+                                    }} className="flex-1 py-3 rounded-xl bg-orange-500 font-bold">Skip</button>
                                 </div>
                             </div>
                         </div>
@@ -315,101 +253,64 @@
         }
 
         function Settings({ activities, setActivities }) {
-            const [form, setForm] = useState({ name: '', freqType: 'daily', freqDays: [], freqCount: 3, identity: '' });
+            const [form, setForm] = useState({ name: '', freqType: 'daily', freqDays: [], freqCount: 1, identity: '' });
             const days = [{ id: 1, label: 'จ.' }, { id: 2, label: 'อ.' }, { id: 3, label: 'พ.' }, { id: 4, label: 'พฤ.' }, { id: 5, label: 'ศ.' }, { id: 6, label: 'ส.' }, { id: 0, label: 'อา.' }];
-            const handleSave = (e) => {
-                e.preventDefault();
-                if(!form.name.trim()) return;
-                setActivities([...activities, { ...form, id: generateId(), archived: false }]);
-                setForm({ name: '', freqType: 'daily', freqDays: [], freqCount: 3, identity: '' });
-            };
             return (
                 <div className="fade-in space-y-6 pb-10">
                     <div className="bg-card p-5 rounded-3xl border border-slate-700">
-                        <h2 className="text-lg font-semibold mb-4">เพิ่มนิสัยใหม่</h2>
-                        <form onSubmit={handleSave} className="space-y-4">
-                            <input required type="text" value={form.name} onChange={e => setForm({...form, name: e.target.value})} className="w-full bg-dark border border-slate-600 rounded-xl p-3 text-sm focus:border-primary outline-none" placeholder="ชื่อกิจกรรม" />
-                            <input required type="text" value={form.identity} onChange={e => setForm({...form, identity: e.target.value})} className="w-full bg-dark border border-slate-600 rounded-xl p-3 text-sm focus:border-primary outline-none" placeholder="Identity Label (ฉันคือ...)" />
+                        <h2 className="text-lg font-semibold mb-4">Add Habit</h2>
+                        <div className="space-y-4">
+                            <input type="text" value={form.name} onChange={e => setForm({...form, name: e.target.value})} className="w-full bg-dark border border-slate-600 rounded-xl p-3 text-sm" placeholder="Habit Name" />
+                            <input type="text" value={form.identity} onChange={e => setForm({...form, identity: e.target.value})} className="w-full bg-dark border border-slate-600 rounded-xl p-3 text-sm" placeholder="Identity (I am...)" />
                             <div className="flex gap-2">
                                 {['daily', 'specific', 'weekly'].map(type => (
-                                    <button key={type} type="button" onClick={() => setForm({...form, freqType: type})} className={"flex-1 py-2 rounded-lg border text-xs uppercase " + (form.freqType === type ? "bg-primary/20 border-primary text-primary" : "border-slate-600 text-slate-500")}>{type}</button>
+                                    <button key={type} onClick={() => setForm({...form, freqType: type})} className={"flex-1 py-2 rounded-lg border text-xs capitalize " + (form.freqType === type ? "bg-primary/20 border-primary text-primary" : "border-slate-600 text-slate-500")}>{type}</button>
                                 ))}
                             </div>
-                            {form.freqType === 'specific' && (
-                                <div className="flex justify-between">{days.map(d => (
-                                    <button key={d.id} type="button" onClick={() => setForm({...form, freqDays: form.freqDays.includes(d.id) ? form.freqDays.filter(x => x !== d.id) : [...form.freqDays, d.id]})} className={"w-9 h-9 rounded-full text-[10px] " + (form.freqDays.includes(d.id) ? "bg-primary text-dark font-bold" : "bg-slate-800 text-slate-500")}>{d.label}</button>
-                                ))}</div>
-                            )}
-                            {form.freqType === 'weekly' && <input type="number" min="1" max="7" value={form.freqCount} onChange={e => setForm({...form, freqCount: parseInt(e.target.value)})} className="w-full bg-dark border border-slate-600 rounded-xl p-3 text-sm" placeholder="จำนวนครั้งต่อสัปดาห์" />}
-                            <button type="submit" className="w-full bg-primary text-dark font-bold py-3 rounded-xl mt-4">บันทึกกิจกรรม</button>
-                        </form>
+                            {form.freqType === 'weekly' && <input type="number" min="1" max="7" value={form.freqCount} onChange={e => setForm({...form, freqCount: parseInt(e.target.value)})} className="w-full bg-dark border border-slate-600 rounded-xl p-3 text-sm" placeholder="Times per week" />}
+                            <button onClick={() => { if(form.name) { setActivities([...activities, {...form, id:generateId(), archived:false}]); setForm({name:'',freqType:'daily',freqDays:[],freqCount:1,identity:''}); } }} className="w-full bg-primary text-dark font-bold py-3 rounded-xl">Save</button>
+                        </div>
                     </div>
-                    <div className="space-y-2">
-                        {activities.filter(a => !a.archived).map(a => (
-                            <div key={a.id} className="p-4 bg-card rounded-xl border border-slate-700 flex justify-between items-center">
-                                <div><p className="font-medium">{a.name}</p><p className="text-[10px] text-slate-500">{a.identity}</p></div>
-                                <button onClick={() => setActivities(activities.map(x => x.id === a.id ? {...x, archived: true} : x))} className="text-slate-500"><Icon name="archive" className="w-5 h-5" /></button>
-                            </div>
-                        ))}
-                    </div>
+                    {activities.filter(a=>!a.archived).map(a => (
+                        <div key={a.id} className="p-4 bg-card rounded-xl border border-slate-700 flex justify-between items-center text-sm">
+                            <span>{a.name} ({a.freqType})</span>
+                            <button onClick={() => setActivities(activities.map(x=>x.id===a.id?{...x,archived:true}:x))}><Icon name="archive" className="w-5 h-5 text-slate-500"/></button>
+                        </div>
+                    ))}
                 </div>
             );
         }
 
         function Reflection({ reflections, setReflections }) {
-            const today = getTodayStr();
-            const [form, setForm] = useState({ date: today, identityScore: 0, fearObservation: '', nextSprint: '' });
-            const handleSave = () => {
-                if(form.identityScore === 0) return alert('โปรดให้คะแนนก่อนบันทึก');
-                setReflections([{...form, id: generateId()}, ...reflections]);
-                setForm({ date: today, identityScore: 0, fearObservation: '', nextSprint: '' });
-            };
+            const [score, setScore] = useState(0);
             return (
-                <div className="fade-in space-y-6">
-                    <div className="bg-gradient-to-r from-blue-900/40 to-indigo-900/40 p-6 rounded-3xl border border-blue-800/30">
-                        <h2 className="text-xl font-bold mb-6">Sunday Reflection</h2>
-                        <div className="flex gap-2 justify-center mb-6">
-                            {[1,2,3,4,5].map(s => (
-                                <button key={s} onClick={() => setForm({...form, identityScore: s})} className={"w-11 h-11 rounded-full font-bold " + (form.identityScore === s ? "bg-blue-500 shadow-lg scale-110" : "bg-slate-800 text-slate-500")}>{s}</button>
-                            ))}
-                        </div>
-                        <textarea value={form.fearObservation} onChange={e => setForm({...form, fearObservation: e.target.value})} className="w-full bg-dark/50 border border-slate-700 rounded-xl p-3 text-sm mb-4 h-24 outline-none" placeholder="ความกังวลหรือปัญหาที่พบเจอ..." />
-                        <textarea value={form.nextSprint} onChange={e => setForm({...form, nextSprint: e.target.value})} className="w-full bg-dark/50 border border-slate-700 rounded-xl p-3 text-sm mb-6 h-20 outline-none" placeholder="เป้าหมายหรือการแก้ไขในสัปดาห์หน้า..." />
-                        <button onClick={handleSave} className="w-full bg-blue-600 font-bold py-4 rounded-xl">บันทึก Reflection</button>
+                <div className="fade-in p-6 bg-gradient-to-br from-blue-900/40 to-indigo-900/40 rounded-3xl border border-blue-800/30">
+                    <h2 className="text-xl font-bold mb-6">Sunday Reflection</h2>
+                    <div className="flex gap-2 justify-center mb-10">
+                        {[1,2,3,4,5].map(s => (
+                            <button key={s} onClick={() => setScore(s)} className={"w-12 h-12 rounded-full font-bold " + (score === s ? "bg-blue-500" : "bg-slate-800 text-slate-500")}>{s}</button>
+                        ))}
                     </div>
+                    <button onClick={() => { if(score) { setReflections([{id:generateId(), date:getTodayStr(), identityScore:score}, ...reflections]); setScore(0); alert('Saved!'); } }} className="w-full bg-blue-600 font-bold py-4 rounded-xl shadow-lg">Save Reflection</button>
                 </div>
             );
         }
 
         function Stats({ activities, records, reflections }) {
-            const allDates = useMemo(() => {
-                const dates = [...new Set([...records.map(r => r.date), ...reflections.map(r => r.date)])];
-                return dates.sort((a,b) => new Date(b) - new Date(a));
-            }, [records, reflections]);
-
+            const allDates = [...new Set([...records.map(r => r.date), ...reflections.map(r => r.date)])].sort((a,b) => new Date(b) - new Date(a));
             return (
-                <div className="fade-in space-y-6 pb-20">
-                    <h2 className="text-xl font-bold px-2">History Log</h2>
-                    <div className="space-y-4">
-                        {allDates.map(date => {
-                            const dayRecs = records.filter(r => r.date === date);
-                            const dayRef = reflections.find(r => r.date === date);
-                            return (
-                                <div key={date} className="bg-card p-5 rounded-2xl border border-slate-700">
-                                    <h3 className="text-emerald-400 font-bold text-sm mb-3 border-b border-slate-800 pb-2">{new Date(date).toLocaleDateString('th-TH', {dateStyle: 'medium'})}</h3>
-                                    <div className="space-y-2 mb-3">
-                                        {dayRecs.map(r => (
-                                            <div key={r.id} className="flex items-center gap-2 text-sm">
-                                                <span>{r.status === 'completed' ? '✅' : '⏭️'}</span>
-                                                <span className={r.status === 'skipped' ? 'text-slate-500' : ''}>{activities.find(a => a.id === r.activityId)?.name || 'Deleted Habit'}</span>
-                                            </div>
-                                        ))}
-                                    </div>
-                                    {dayRef && <div className="mt-3 p-3 bg-dark/40 rounded-xl text-xs text-slate-400 italic">คะแนน: {dayRef.identityScore}/5 | {dayRef.fearObservation}</div>}
+                <div className="fade-in space-y-4 pb-20">
+                    {allDates.map(date => (
+                        <div key={date} className="bg-card p-4 rounded-2xl border border-slate-700">
+                            <h3 className="text-emerald-400 font-bold text-xs mb-2">{new Date(date).toLocaleDateString('th-TH',{dateStyle:'medium'})}</h3>
+                            {records.filter(r => r.date === date).map(r => (
+                                <div key={r.id} className="text-sm text-slate-300 flex gap-2">
+                                    <span>{r.status === 'completed' ? '✅' : '⏭️'}</span>
+                                    <span>{activities.find(a=>a.id===r.activityId)?.name}</span>
                                 </div>
-                            );
-                        })}
-                    </div>
+                            ))}
+                        </div>
+                    ))}
                 </div>
             );
         }
