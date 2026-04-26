@@ -20,7 +20,9 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.24.7/babel.min.js"></script>
 
     <style>
-        ::-webkit-scrollbar { width: 0px; background: transparent; }
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
         body { -webkit-tap-highlight-color: transparent; }
         .fade-in { animation: fadeIn 0.3s ease-in-out; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
@@ -34,7 +36,7 @@
             setTimeout(() => {
                 const root = document.getElementById('root');
                 if (!root || root.innerHTML.trim() === '') {
-                    root.innerHTML = '<div class="text-white text-center mt-20 p-6 border border-red-500 rounded-2xl bg-red-900/30 mx-4"><h2 class="text-xl font-bold mb-2">🚨 โหลดแอปไม่สำเร็จ</h2><p class="text-sm text-slate-300">อาจเกิดจากอินเทอร์เน็ตโหลดไฟล์ระบบไม่ทัน หรือมีโค้ดขัดข้อง</p><p class="text-xs text-yellow-400 mt-4">วิธึแก้เบื้องต้น: ลองกด Refresh หน้าเว็บหนึ่งครั้ง<br>ถ้ายังไม่หาย กรุณากด F12 (หรือคลิกขวา > Inspect > Console) แล้วแคปหน้าจอแจ้งเตือนสีแดงมาให้ผมดูหน่อยครับ</p></div>';
+                    root.innerHTML = '<div class="text-white text-center mt-20 p-6 border border-red-500 rounded-2xl bg-red-900/30 mx-4"><h2 class="text-xl font-bold mb-2">🚨 โหลดแอปไม่สำเร็จ</h2><p class="text-sm text-slate-300">กรุณา Refresh หน้าเว็บหนึ่งครั้ง</p></div>';
                 }
             }, 3000);
         });
@@ -43,19 +45,32 @@
     <script type="text/babel" data-presets="react">
         const { useState, useEffect, useMemo } = React;
 
+        // --- Helper Functions ---
         const generateId = () => Math.random().toString(36).substr(2, 9);
         const getTodayStr = () => new Date().toISOString().split('T')[0];
+        
+        // ฟังก์ชันเช็คว่า 2 วันที่อยู่ใน "สัปดาห์เดียวกัน" หรือไม่ (จันทร์-อาทิตย์)
+        const isSameWeek = (dateStr1, dateStr2) => {
+            if (!dateStr1 || !dateStr2) return false;
+            const getMonday = (d) => {
+                const date = new Date(d);
+                const day = date.getDay() || 7; // ให้วันอาทิตย์มีค่าเป็น 7
+                date.setHours(0,0,0,0);
+                date.setDate(date.getDate() - day + 1);
+                return date.getTime();
+            };
+            return getMonday(dateStr1) === getMonday(dateStr2);
+        };
         
         const Icon = ({ name, className = "w-6 h-6" }) => {
             const icons = {
                 home: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />,
                 settings: <><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><circle cx="12" cy="12" r="3" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" /></>,
-sun: <path strokeLinecap="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />,
+                sun: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />,
                 chart: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />,
                 check: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />,
                 skip: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.933 12.8a1 1 0 000-1.6L6.6 7.2A1 1 0 005 8v8a1 1 0 001.6.8l5.333-4zM19.933 12.8a1 1 0 000-1.6l-5.333-4A1 1 0 0013 8v8a1 1 0 001.6.8l5.333-4z" />,
-                archive: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />,
-                mic: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                archive: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
             };
             return <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" className={className}>{icons[name]}</svg>;
         };
@@ -98,319 +113,10 @@ sun: <path strokeLinecap="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3
                         {[
                             { id: 'dashboard', icon: 'home', label: 'Home' },
                             { id: 'reflection', icon: 'sun', label: 'Reflect' },
-                            { id: 'stats', icon: 'chart', label: 'Stats' },
+                            { id: 'stats', icon: 'chart', label: 'Stats & Hist' },
                             { id: 'settings', icon: 'settings', label: 'Config' }
                         ].map(item => (
                             <button 
                                 key={item.id} 
                                 onClick={() => setTab(item.id)}
-                                className={`flex flex-col items-center p-2 rounded-xl transition-colors ${tab === item.id ? 'text-primary' : 'text-slate-500 hover:text-slate-300'}`}
-                            >
-                                <Icon name={item.icon} className="w-6 h-6 mb-1" />
-                                <span className="text-[10px] font-medium">{item.label}</span>
-                            </button>
-                        ))}
-                    </nav>
-                </div>
-            );
-        }
-
-        function Dashboard({ activities, records, setRecords }) {
-            const today = getTodayStr();
-            const [randomIdentity, setRandomIdentity] = useState('ฉันกำลังสร้างตัวตนใหม่');
-            const [skipModal, setSkipModal] = useState({ show: false, activityId: null, reason: '' });
-
-            const activeActivities = activities.filter(a => !a.archived);
-            const dueActivities = useMemo(() => {
-                const currentDay = new Date().getDay();
-                return activeActivities.filter(activity => {
-                    if (activity.freqType === 'daily') return true;
-                    if (activity.freqType === 'specific') return activity.freqDays.includes(currentDay);
-                    return true;
-                });
-            }, [activeActivities, records]);
-
-            useEffect(() => {
-                const labels = dueActivities.map(a => a.identity).filter(Boolean);
-                if (labels.length > 0) setRandomIdentity(labels[Math.floor(Math.random() * labels.length)]);
-            }, [dueActivities]);
-
-            const todayRecords = records.filter(r => r.date === today);
-            const completedCount = dueActivities.filter(a => todayRecords.some(r => r.activityId === a.id && r.status === 'completed')).length;
-            const progressPercent = dueActivities.length === 0 ? 0 : Math.round((completedCount / dueActivities.length) * 100);
-
-            const currentStreak = useMemo(() => {
-                let streak = 0;
-                let dateToCheck = new Date();
-                while(true) {
-                    const dateStr = dateToCheck.toISOString().split('T')[0];
-                    if (records.some(r => r.date === dateStr && r.status === 'completed')) {
-                        streak++;
-                    } else if (dateStr !== today) {
-                        break;
-                    }
-                    dateToCheck.setDate(dateToCheck.getDate() - 1);
-                }
-                return streak;
-            }, [records, today]);
-
-            const handleComplete = (activityId) => {
-                const existing = todayRecords.find(r => r.activityId === activityId);
-                if (existing) {
-                    setRecords(records.filter(r => r.id !== existing.id));
-                } else {
-                    setRecords([...records, { id: generateId(), activityId, date: today, status: 'completed', timestamp: Date.now() }]);
-                }
-            };
-
-            const confirmSkip = () => {
-                if(!skipModal.reason.trim()) return;
-                setRecords([...records, { id: generateId(), activityId: skipModal.activityId, date: today, status: 'skipped', reason: skipModal.reason, timestamp: Date.now() }]);
-                setSkipModal({ show: false, activityId: null, reason: '' });
-            };
-
-            return (
-                <div className="fade-in space-y-6">
-                    <div className="bg-gradient-to-br from-emerald-900/40 to-teal-900/40 border border-emerald-800/50 p-4 rounded-2xl text-center">
-                        <p className="text-emerald-400 font-medium text-sm mb-1">Identity Reminder</p>
-                        <p className="text-lg font-semibold tracking-wide">"{randomIdentity}"</p>
-                    </div>
-
-                    <div className="flex items-center justify-between bg-card p-5 rounded-3xl shadow-lg border border-slate-700/50">
-                        <div className="relative w-24 h-24 flex items-center justify-center">
-                            <svg className="w-full h-full transform -rotate-90" viewBox="0 0 36 36">
-                                <path className="text-slate-700" strokeWidth="3" stroke="currentColor" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
-                                <path className="text-primary transition-all duration-1000 ease-out" strokeDasharray={`${progressPercent}, 100`} strokeWidth="3" strokeLinecap="round" stroke="currentColor" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
-                            </svg>
-                            <div className="absolute flex flex-col items-center"><span className="text-2xl font-bold">{progressPercent}%</span></div>
-                        </div>
-                        <div className="text-right">
-                            <p className="text-slate-400 text-sm">Current Streak</p>
-                            <p className="text-3xl font-bold text-orange-400 flex items-center justify-end gap-1">{currentStreak} <span className="text-xl">🔥</span></p>
-                        </div>
-                    </div>
-
-                    <div>
-                        <h2 className="text-xl font-semibold mb-4 text-slate-200">Today's Missions</h2>
-                        {dueActivities.length === 0 ? (
-                            <p className="text-slate-500 text-center py-8">ไม่มีภารกิจสำหรับวันนี้ พักผ่อนให้เต็มที่! 🌟</p>
-                        ) : (
-                            <div className="space-y-3">
-                                {dueActivities.map(activity => {
-                                    const record = todayRecords.find(r => r.activityId === activity.id);
-                                    const isCompleted = record?.status === 'completed';
-                                    const isSkipped = record?.status === 'skipped';
-
-                                    return (
-                                        <div key={activity.id} className={`p-4 rounded-2xl border transition-all ${isCompleted ? 'bg-primary/10 border-primary/30' : isSkipped ? 'bg-slate-800/50 border-slate-700/50 opacity-60' : 'bg-card border-slate-700'}`}>
-                                            <div className="flex items-center justify-between">
-                                                <div className="flex items-center gap-4 flex-1">
-                                                    <button onClick={() => handleComplete(activity.id)} disabled={isSkipped} className={`w-8 h-8 rounded-full border-2 flex items-center justify-center transition-colors ${isCompleted ? 'bg-primary border-primary text-dark' : 'border-slate-500 hover:border-primary'} ${isSkipped ? 'cursor-not-allowed' : ''}`}>
-                                                        {isCompleted && <Icon name="check" className="w-5 h-5" />}
-                                                    </button>
-                                                    <div className="flex-1">
-                                                        <h3 className={`font-medium text-lg ${isCompleted ? 'line-through text-slate-400' : 'text-slate-100'}`}>{activity.name}</h3>
-                                                        {isSkipped && <p className="text-xs text-orange-400 mt-1">Skipped: {record.reason}</p>}
-                                                    </div>
-                                                </div>
-                                                {!isCompleted && !isSkipped && (
-                                                    <button onClick={() => setSkipModal({ show: true, activityId: activity.id, reason: '' })} className="p-2 text-slate-500 hover:text-orange-400 bg-slate-800 rounded-lg ml-2"><Icon name="skip" className="w-5 h-5" /></button>
-                                                )}
-                                            </div>
-                                        </div>
-                                    )
-                                })}
-                            </div>
-                        )}
-                    </div>
-
-                    {skipModal.show && (
-                        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-                            <div className="bg-card w-full max-w-sm rounded-3xl p-6 border border-slate-700 shadow-2xl">
-                                <h3 className="text-xl font-bold mb-2">Emergency Skip 🚨</h3>
-                                <p className="text-sm text-slate-400 mb-4">ทำไมวันนี้ถึงต้องข้ามกิจกรรมนี้?</p>
-                                <input type="text" className="w-full bg-dark border border-slate-600 rounded-xl p-3 text-white focus:outline-none focus:border-orange-500 mb-6" placeholder="เช่น ป่วย, งานด่วนกระทันหัน..." autoFocus value={skipModal.reason} onChange={(e) => setSkipModal({...skipModal, reason: e.target.value})} />
-                                <div className="flex gap-3">
-                                    <button onClick={() => setSkipModal({show: false, activityId: null, reason: ''})} className="flex-1 py-3 rounded-xl bg-slate-700 text-white font-medium">ยกเลิก</button>
-                                    <button onClick={confirmSkip} className="flex-1 py-3 rounded-xl bg-orange-500 text-white font-medium">บันทึก</button>
-                                </div>
-                            </div>
-                        </div>
-                    )}
-                </div>
-            );
-        }
-
-        function Settings({ activities, setActivities }) {
-            const [form, setForm] = useState({ name: '', freqType: 'daily', freqDays: [], freqCount: 3, identity: '' });
-            const [showArchived, setShowArchived] = useState(false);
-            const days = [{ id: 1, label: 'จ.' }, { id: 2, label: 'อ.' }, { id: 3, label: 'พ.' }, { id: 4, label: 'พฤ.' }, { id: 5, label: 'ศ.' }, { id: 6, label: 'ส.' }, { id: 0, label: 'อา.' }];
-
-            const handleSave = (e) => {
-                e.preventDefault();
-                if(!form.name.trim()) return;
-                setActivities([...activities, { ...form, id: generateId(), archived: false, createdAt: Date.now() }]);
-                setForm({ name: '', freqType: 'daily', freqDays: [], freqCount: 3, identity: '' });
-            };
-
-            const toggleArchive = (id) => {
-                setActivities(activities.map(a => a.id === id ? { ...a, archived: !a.archived } : a));
-            };
-
-            return (
-                <div className="fade-in space-y-8">
-                    <div className="bg-card p-5 rounded-3xl border border-slate-700">
-                        <h2 className="text-lg font-semibold mb-4 flex items-center gap-2"><Icon name="settings" /> จัดการกิจกรรม</h2>
-                        <form onSubmit={handleSave} className="space-y-4">
-                            <div>
-                                <label className="block text-sm text-slate-400 mb-1">ชื่อกิจกรรม</label>
-                                <input required type="text" value={form.name} onChange={e => setForm({...form, name: e.target.value})} className="w-full bg-dark border border-slate-600 rounded-xl p-3 text-white focus:outline-none focus:border-primary" placeholder="เช่น อ่านหนังสือ 1 หน้า" />
-                            </div>
-                            <div>
-                                <label className="block text-sm text-slate-400 mb-1">Identity Label</label>
-                                <input required type="text" value={form.identity} onChange={e => setForm({...form, identity: e.target.value})} className="w-full bg-dark border border-slate-600 rounded-xl p-3 text-white focus:outline-none focus:border-primary" placeholder="เช่น ฉันคือนักอ่านผู้กระหายความรู้" />
-                            </div>
-                            <div>
-                                <label className="block text-sm text-slate-400 mb-1">ความถี่</label>
-                                <div className="grid grid-cols-3 gap-2">
-                                    <button type="button" onClick={() => setForm({...form, freqType: 'daily'})} className={`py-2 rounded-lg border text-sm transition-colors ${form.freqType === 'daily' ? 'bg-primary/20 border-primary text-primary' : 'border-slate-600 text-slate-400'}`}>ทุกวัน</button>
-                                    <button type="button" onClick={() => setForm({...form, freqType: 'specific'})} className={`py-2 rounded-lg border text-sm transition-colors ${form.freqType === 'specific' ? 'bg-primary/20 border-primary text-primary' : 'border-slate-600 text-slate-400'}`}>เลือกวัน</button>
-                                    <button type="button" onClick={() => setForm({...form, freqType: 'weekly'})} className={`py-2 rounded-lg border text-sm transition-colors ${form.freqType === 'weekly' ? 'bg-primary/20 border-primary text-primary' : 'border-slate-600 text-slate-400'}`}>รายสัปดาห์</button>
-                                </div>
-                            </div>
-                            {form.freqType === 'specific' && (
-                                <div className="flex justify-between gap-1 mt-2">
-                                    {days.map(d => (
-                                        <button key={d.id} type="button" onClick={() => setForm({...form, freqDays: form.freqDays.includes(d.id) ? form.freqDays.filter(day => day !== d.id) : [...form.freqDays, d.id]})} className={`w-10 h-10 rounded-full flex items-center justify-center text-sm transition-colors ${form.freqDays.includes(d.id) ? 'bg-primary text-dark font-bold' : 'bg-slate-800 text-slate-400'}`}>{d.label}</button>
-                                    ))}
-                                </div>
-                            )}
-                            {form.freqType === 'weekly' && (
-                                <div className="mt-2">
-                                    <label className="block text-sm text-slate-400 mb-1">จำนวนครั้งต่อสัปดาห์</label>
-                                    <input type="number" min="1" max="7" value={form.freqCount} onChange={e => setForm({...form, freqCount: parseInt(e.target.value)})} className="w-full bg-dark border border-slate-600 rounded-xl p-3 text-white focus:outline-none focus:border-primary" />
-                                </div>
-                            )}
-                            <button type="submit" className="w-full bg-primary text-dark font-bold py-3 rounded-xl hover:bg-emerald-400 transition-colors mt-4">บันทึกกิจกรรม</button>
-                        </form>
-                    </div>
-
-                    <div>
-                        <div className="flex justify-between items-center mb-4">
-                            <h2 className="text-lg font-semibold text-slate-200">รายการของคุณ</h2>
-                            <button onClick={() => setShowArchived(!showArchived)} className="text-sm text-slate-400 underline">{showArchived ? 'ซ่อนที่เก็บถาวร' : 'แสดงที่เก็บถาวร'}</button>
-                        </div>
-                        <div className="space-y-3">
-                            {activities.filter(a => showArchived || !a.archived).map(a => (
-                                <div key={a.id} className={`p-4 rounded-xl border flex justify-between items-center ${a.archived ? 'bg-dark border-slate-800 opacity-60' : 'bg-card border-slate-700'}`}>
-                                    <div>
-                                        <h3 className="font-medium text-slate-100">{a.name}</h3>
-                                        <p className="text-xs text-slate-400 mt-1">{a.freqType === 'daily' ? 'ทำทุกวัน' : a.freqType === 'weekly' ? `${a.freqCount} ครั้ง/สัปดาห์` : 'วันเฉพาะเจาะจง'} • {a.identity}</p>
-                                    </div>
-                                    <button onClick={() => toggleArchive(a.id)} className="p-2 bg-slate-800 rounded-lg text-slate-400 hover:text-white"><Icon name="archive" className="w-5 h-5" /></button>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                </div>
-            );
-        }
-
-        function Reflection({ reflections, setReflections }) {
-            const today = getTodayStr();
-            const isSunday = new Date().getDay() === 0;
-            const [form, setForm] = useState({ date: today, identityScore: 0, fearObservation: '', nextSprint: '' });
-
-            const handleSave = () => {
-                if(form.identityScore === 0) return alert('โปรดให้คะแนน Identity Score ก่อนบันทึก');
-                setReflections([{...form, id: generateId()}, ...reflections]);
-                setForm({ date: today, identityScore: 0, fearObservation: '', nextSprint: '' });
-            };
-
-            const existingToday = reflections.find(r => r.date === today);
-
-            return (
-                <div className="fade-in space-y-6">
-                    <div className="bg-gradient-to-r from-blue-900/50 to-indigo-900/50 p-6 rounded-3xl border border-blue-800/50">
-                        <h2 className="text-2xl font-bold text-blue-300 mb-2">Sunday Reflection 🧘‍♂️</h2>
-                        <p className="text-sm text-slate-300 mb-6">ทบทวนตัวเองประจำสัปดาห์</p>
-                        
-                        {!isSunday && <div className="bg-yellow-900/40 text-yellow-500 p-3 rounded-xl text-sm mb-6">บันทึกได้แม้ไม่ใช่วันอาทิตย์</div>}
-
-                        {existingToday ? (
-                            <div className="bg-dark/50 p-6 rounded-2xl text-center border border-slate-700">
-                                <span className="text-4xl mb-2 block">🌟</span>
-                                <p className="text-emerald-400 font-medium">คุณได้สะท้อนผลวันนี้แล้ว</p>
-                            </div>
-                        ) : (
-                            <div className="space-y-6">
-                                <div>
-                                    <label className="block text-sm font-medium mb-3 text-slate-200">1. Identity Score</label>
-                                    <div className="flex gap-2 justify-center">
-                                        {[1,2,3,4,5].map(score => (
-                                            <button key={score} onClick={() => setForm({...form, identityScore: score})} className={`w-12 h-12 rounded-full text-lg font-bold transition-transform ${form.identityScore === score ? 'bg-blue-500 text-white scale-110 shadow-lg' : 'bg-slate-800 text-slate-400'}`}>{score}</button>
-                                        ))}
-                                    </div>
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-slate-200 mb-2">2. Fear Observation</label>
-                                    <textarea value={form.fearObservation} onChange={e => setForm({...form, fearObservation: e.target.value})} className="w-full bg-dark/80 border border-slate-600 rounded-xl p-3 text-white focus:outline-none focus:border-blue-500 h-24 resize-none" placeholder="บันทึกความกังวล..." />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium mb-2 text-slate-200">3. Next Sprint</label>
-                                    <textarea value={form.nextSprint} onChange={e => setForm({...form, nextSprint: e.target.value})} className="w-full bg-dark/80 border border-slate-600 rounded-xl p-3 text-white focus:outline-none focus:border-blue-500 h-20 resize-none" placeholder="เป้าหมายสัปดาห์หน้า..." />
-                                </div>
-                                <button onClick={handleSave} className="w-full bg-gradient-to-r from-blue-500 to-indigo-600 text-white font-bold py-4 rounded-xl hover:opacity-90">บันทึก Reflection</button>
-                            </div>
-                        )}
-                    </div>
-                </div>
-            );
-        }
-
-        function Stats({ activities, records, reflections }) {
-            const heatmapDays = useMemo(() => {
-                const days = [];
-                for(let i=27; i>=0; i--) {
-                    const d = new Date(); d.setDate(d.getDate() - i);
-                    const count = records.filter(r => r.date === d.toISOString().split('T')[0] && r.status === 'completed').length;
-                    let color = 'bg-slate-800';
-                    if (count === 1) color = 'bg-emerald-900/60'; else if (count === 2) color = 'bg-emerald-600/80'; else if (count >= 3) color = 'bg-emerald-400';
-                    days.push({ color });
-                }
-                return days;
-            }, [records]);
-
-            const handleExport = () => {
-                const data = { activities, records, reflections };
-                const a = document.createElement('a');
-                a.href = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }));
-                a.download = `self-trust-data.json`;
-                document.body.appendChild(a); a.click(); document.body.removeChild(a);
-            };
-
-            return (
-                <div className="fade-in space-y-8">
-                    <div className="bg-card p-5 rounded-3xl border border-slate-700">
-                        <h2 className="text-lg font-semibold mb-4 text-slate-200">Monthly Consistency</h2>
-                        <div className="grid grid-cols-7 gap-2">
-                            {heatmapDays.map((day, i) => <div key={i} className={`w-full aspect-square rounded-md ${day.color}`}></div>)}
-                        </div>
-                    </div>
-                    <div>
-                        <button onClick={handleExport} className="w-full bg-slate-800 border border-slate-600 text-slate-300 font-medium py-4 rounded-xl hover:bg-slate-700 transition-colors flex items-center justify-center gap-2"><Icon name="archive" className="w-5 h-5" /> Export Data (JSON)</button>
-                    </div>
-                </div>
-            );
-        }
-
-        try {
-            const root = ReactDOM.createRoot(document.getElementById('root'));
-            root.render(<App />);
-        } catch (error) {
-            console.error("React Initialization Error:", error);
-            document.getElementById('root').innerHTML = `<div style="color:red; padding:20px;"><h2>System Error</h2><p>${error.message}</p></div>`;
-        }
-    </script>
-</body>
-</html>
+                                className={`flex
