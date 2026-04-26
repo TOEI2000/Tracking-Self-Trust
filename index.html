@@ -5,36 +5,21 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Self-Trust Tracker</title>
     
-    <!-- PWA Manifest -->
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#0f172a">
-    <link rel="apple-touch-icon" href="icon-192.png">
 
-    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        primary: '#10b981', // Emerald 500
-                        dark: '#0f172a',    // Slate 900
-                        card: '#1e293b'     // Slate 800
-                    }
-                }
-            }
+            theme: { extend: { colors: { primary: '#10b981', dark: '#0f172a', card: '#1e293b' } } }
         }
     </script>
 
-    <!-- React & ReactDOM -->
-    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-    
-    <!-- Babel for in-browser JSX compilation -->
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js"></script>
+    <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.24.7/babel.min.js"></script>
 
     <style>
-        /* ซ่อน Scrollbar เพื่อความคลีน */
         ::-webkit-scrollbar { width: 0px; background: transparent; }
         body { -webkit-tap-highlight-color: transparent; }
         .fade-in { animation: fadeIn 0.3s ease-in-out; }
@@ -44,14 +29,23 @@
 <body class="bg-dark text-slate-100 min-h-screen font-sans antialiased pb-20">
     <div id="root"></div>
 
-    <script type="text/babel">
+    <script>
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                const root = document.getElementById('root');
+                if (!root || root.innerHTML.trim() === '') {
+                    root.innerHTML = '<div class="text-white text-center mt-20 p-6 border border-red-500 rounded-2xl bg-red-900/30 mx-4"><h2 class="text-xl font-bold mb-2">🚨 โหลดแอปไม่สำเร็จ</h2><p class="text-sm text-slate-300">อาจเกิดจากอินเทอร์เน็ตโหลดไฟล์ระบบไม่ทัน หรือมีโค้ดขัดข้อง</p><p class="text-xs text-yellow-400 mt-4">วิธึแก้เบื้องต้น: ลองกด Refresh หน้าเว็บหนึ่งครั้ง<br>ถ้ายังไม่หาย กรุณากด F12 (หรือคลิกขวา > Inspect > Console) แล้วแคปหน้าจอแจ้งเตือนสีแดงมาให้ผมดูหน่อยครับ</p></div>';
+                }
+            }, 3000);
+        });
+    </script>
+
+    <script type="text/babel" data-presets="react">
         const { useState, useEffect, useMemo } = React;
 
-        // --- Helper Functions ---
         const generateId = () => Math.random().toString(36).substr(2, 9);
         const getTodayStr = () => new Date().toISOString().split('T')[0];
         
-        // --- Icons Component (SVG Inline) ---
         const Icon = ({ name, className = "w-6 h-6" }) => {
             const icons = {
                 home: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />,
@@ -66,24 +60,20 @@
             return <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" className={className}>{icons[name]}</svg>;
         };
 
-        // --- Main App Component ---
         function App() {
             const [tab, setTab] = useState('dashboard');
             const [activities, setActivities] = useState([]);
             const [records, setRecords] = useState([]);
             const [reflections, setReflections] = useState([]);
 
-            // Load from LocalStorage
             useEffect(() => {
-                const savedActivities = JSON.parse(localStorage.getItem('st_activities') || '[]');
-                const savedRecords = JSON.parse(localStorage.getItem('st_records') || '[]');
-                const savedReflections = JSON.parse(localStorage.getItem('st_reflections') || '[]');
-                setActivities(savedActivities);
-                setRecords(savedRecords);
-                setReflections(savedReflections);
+                try {
+                    setActivities(JSON.parse(localStorage.getItem('st_activities') || '[]'));
+                    setRecords(JSON.parse(localStorage.getItem('st_records') || '[]'));
+                    setReflections(JSON.parse(localStorage.getItem('st_reflections') || '[]'));
+                } catch(e) { console.error("Storage load error", e); }
             }, []);
 
-            // Save to LocalStorage whenever state changes
             useEffect(() => { localStorage.setItem('st_activities', JSON.stringify(activities)); }, [activities]);
             useEffect(() => { localStorage.setItem('st_records', JSON.stringify(records)); }, [records]);
             useEffect(() => { localStorage.setItem('st_reflections', JSON.stringify(reflections)); }, [reflections]);
@@ -104,8 +94,7 @@
                         {tab === 'stats' && <Stats activities={activities} records={records} reflections={reflections} />}
                     </main>
 
-                    {/* Bottom Navigation */}
-                    <nav className="fixed bottom-0 w-full max-w-md bg-card border-t border-slate-700 flex justify-around py-3 px-2 z-20 pb-safe">
+                    <nav className="fixed bottom-0 w-full max-w-md bg-card border-t border-slate-700 flex justify-around py-3 px-2 z-20">
                         {[
                             { id: 'dashboard', icon: 'home', label: 'Home' },
                             { id: 'reflection', icon: 'sun', label: 'Reflect' },
@@ -126,58 +115,38 @@
             );
         }
 
-        // --- Dashboard Component ---
         function Dashboard({ activities, records, setRecords }) {
             const today = getTodayStr();
-            const [randomIdentity, setRandomIdentity] = useState('');
+            const [randomIdentity, setRandomIdentity] = useState('ฉันกำลังสร้างตัวตนใหม่');
             const [skipModal, setSkipModal] = useState({ show: false, activityId: null, reason: '' });
 
-            // เลือกกิจกรรมที่ Active และกรองตามเงื่อนไขความถี่
             const activeActivities = activities.filter(a => !a.archived);
-            
             const dueActivities = useMemo(() => {
-                const currentDay = new Date().getDay(); // 0 = Sun, 1 = Mon...
-                
+                const currentDay = new Date().getDay();
                 return activeActivities.filter(activity => {
                     if (activity.freqType === 'daily') return true;
                     if (activity.freqType === 'specific') return activity.freqDays.includes(currentDay);
-                    if (activity.freqType === 'weekly') {
-                        // แบบง่าย: แสดงทุกวันจนกว่าจะทำครบจำนวนครั้งในสัปดาห์นี้
-                        // (เพื่อให้ผู้ใช้เลือกทำวันไหนก็ได้)
-                        return true; 
-                    }
                     return true;
                 });
             }, [activeActivities, records]);
 
-            // สุ่ม Identity Label ทุกครั้งที่โหลดหน้าหรือกิจกรรมเปลี่ยน
             useEffect(() => {
                 const labels = dueActivities.map(a => a.identity).filter(Boolean);
-                if (labels.length > 0) {
-                    setRandomIdentity(labels[Math.floor(Math.random() * labels.length)]);
-                } else {
-                    setRandomIdentity("ฉันกำลังสร้างตัวตนใหม่");
-                }
+                if (labels.length > 0) setRandomIdentity(labels[Math.floor(Math.random() * labels.length)]);
             }, [dueActivities]);
 
-            // คำนวณ Progress
             const todayRecords = records.filter(r => r.date === today);
             const completedCount = dueActivities.filter(a => todayRecords.some(r => r.activityId === a.id && r.status === 'completed')).length;
             const progressPercent = dueActivities.length === 0 ? 0 : Math.round((completedCount / dueActivities.length) * 100);
 
-            // คำนวณ Streak (จำนวนวันต่อเนื่องที่มีการทำกิจกรรมอย่างน้อย 1 อย่าง)
             const currentStreak = useMemo(() => {
                 let streak = 0;
                 let dateToCheck = new Date();
-                
                 while(true) {
                     const dateStr = dateToCheck.toISOString().split('T')[0];
-                    const hasRecord = records.some(r => r.date === dateStr && r.status === 'completed');
-                    
-                    if (hasRecord) {
+                    if (records.some(r => r.date === dateStr && r.status === 'completed')) {
                         streak++;
                     } else if (dateStr !== today) {
-                        // ถ้าย้อนกลับไปแล้วไม่เจอ (และไม่ใช่วันนี้ที่ยังว่างอยู่) ให้หยุดนับ
                         break;
                     }
                     dateToCheck.setDate(dateToCheck.getDate() - 1);
@@ -188,55 +157,39 @@
             const handleComplete = (activityId) => {
                 const existing = todayRecords.find(r => r.activityId === activityId);
                 if (existing) {
-                    // Toggle Off
                     setRecords(records.filter(r => r.id !== existing.id));
                 } else {
-                    // Toggle On
                     setRecords([...records, { id: generateId(), activityId, date: today, status: 'completed', timestamp: Date.now() }]);
                 }
             };
 
             const confirmSkip = () => {
                 if(!skipModal.reason.trim()) return;
-                setRecords([...records, { 
-                    id: generateId(), 
-                    activityId: skipModal.activityId, 
-                    date: today, 
-                    status: 'skipped', 
-                    reason: skipModal.reason,
-                    timestamp: Date.now() 
-                }]);
+                setRecords([...records, { id: generateId(), activityId: skipModal.activityId, date: today, status: 'skipped', reason: skipModal.reason, timestamp: Date.now() }]);
                 setSkipModal({ show: false, activityId: null, reason: '' });
             };
 
             return (
                 <div className="fade-in space-y-6">
-                    {/* Identity Reminder */}
                     <div className="bg-gradient-to-br from-emerald-900/40 to-teal-900/40 border border-emerald-800/50 p-4 rounded-2xl text-center">
                         <p className="text-emerald-400 font-medium text-sm mb-1">Identity Reminder</p>
                         <p className="text-lg font-semibold tracking-wide">"{randomIdentity}"</p>
                     </div>
 
-                    {/* Progress Section */}
                     <div className="flex items-center justify-between bg-card p-5 rounded-3xl shadow-lg border border-slate-700/50">
                         <div className="relative w-24 h-24 flex items-center justify-center">
                             <svg className="w-full h-full transform -rotate-90" viewBox="0 0 36 36">
                                 <path className="text-slate-700" strokeWidth="3" stroke="currentColor" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
                                 <path className="text-primary transition-all duration-1000 ease-out" strokeDasharray={`${progressPercent}, 100`} strokeWidth="3" strokeLinecap="round" stroke="currentColor" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
                             </svg>
-                            <div className="absolute flex flex-col items-center">
-                                <span className="text-2xl font-bold">{progressPercent}%</span>
-                            </div>
+                            <div className="absolute flex flex-col items-center"><span className="text-2xl font-bold">{progressPercent}%</span></div>
                         </div>
                         <div className="text-right">
                             <p className="text-slate-400 text-sm">Current Streak</p>
-                            <p className="text-3xl font-bold text-orange-400 flex items-center justify-end gap-1">
-                                {currentStreak} <span className="text-xl">🔥</span>
-                            </p>
+                            <p className="text-3xl font-bold text-orange-400 flex items-center justify-end gap-1">{currentStreak} <span className="text-xl">🔥</span></p>
                         </div>
                     </div>
 
-                    {/* Checklist */}
                     <div>
                         <h2 className="text-xl font-semibold mb-4 text-slate-200">Today's Missions</h2>
                         {dueActivities.length === 0 ? (
@@ -252,11 +205,7 @@
                                         <div key={activity.id} className={`p-4 rounded-2xl border transition-all ${isCompleted ? 'bg-primary/10 border-primary/30' : isSkipped ? 'bg-slate-800/50 border-slate-700/50 opacity-60' : 'bg-card border-slate-700'}`}>
                                             <div className="flex items-center justify-between">
                                                 <div className="flex items-center gap-4 flex-1">
-                                                    <button 
-                                                        onClick={() => handleComplete(activity.id)}
-                                                        disabled={isSkipped}
-                                                        className={`w-8 h-8 rounded-full border-2 flex items-center justify-center transition-colors ${isCompleted ? 'bg-primary border-primary text-dark' : 'border-slate-500 hover:border-primary'} ${isSkipped ? 'cursor-not-allowed' : ''}`}
-                                                    >
+                                                    <button onClick={() => handleComplete(activity.id)} disabled={isSkipped} className={`w-8 h-8 rounded-full border-2 flex items-center justify-center transition-colors ${isCompleted ? 'bg-primary border-primary text-dark' : 'border-slate-500 hover:border-primary'} ${isSkipped ? 'cursor-not-allowed' : ''}`}>
                                                         {isCompleted && <Icon name="check" className="w-5 h-5" />}
                                                     </button>
                                                     <div className="flex-1">
@@ -265,13 +214,7 @@
                                                     </div>
                                                 </div>
                                                 {!isCompleted && !isSkipped && (
-                                                    <button 
-                                                        onClick={() => setSkipModal({ show: true, activityId: activity.id, reason: '' })}
-                                                        className="p-2 text-slate-500 hover:text-orange-400 bg-slate-800 rounded-lg ml-2"
-                                                        title="Emergency Skip"
-                                                    >
-                                                        <Icon name="skip" className="w-5 h-5" />
-                                                    </button>
+                                                    <button onClick={() => setSkipModal({ show: true, activityId: activity.id, reason: '' })} className="p-2 text-slate-500 hover:text-orange-400 bg-slate-800 rounded-lg ml-2"><Icon name="skip" className="w-5 h-5" /></button>
                                                 )}
                                             </div>
                                         </div>
@@ -281,23 +224,15 @@
                         )}
                     </div>
 
-                    {/* Skip Modal */}
                     {skipModal.show && (
                         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
                             <div className="bg-card w-full max-w-sm rounded-3xl p-6 border border-slate-700 shadow-2xl">
                                 <h3 className="text-xl font-bold mb-2">Emergency Skip 🚨</h3>
                                 <p className="text-sm text-slate-400 mb-4">ทำไมวันนี้ถึงต้องข้ามกิจกรรมนี้?</p>
-                                <input 
-                                    type="text" 
-                                    className="w-full bg-dark border border-slate-600 rounded-xl p-3 text-white focus:outline-none focus:border-orange-500 mb-6"
-                                    placeholder="เช่น ป่วย, งานด่วนกระทันหัน..."
-                                    autoFocus
-                                    value={skipModal.reason}
-                                    onChange={(e) => setSkipModal({...skipModal, reason: e.target.value})}
-                                />
+                                <input type="text" className="w-full bg-dark border border-slate-600 rounded-xl p-3 text-white focus:outline-none focus:border-orange-500 mb-6" placeholder="เช่น ป่วย, งานด่วนกระทันหัน..." autoFocus value={skipModal.reason} onChange={(e) => setSkipModal({...skipModal, reason: e.target.value})} />
                                 <div className="flex gap-3">
                                     <button onClick={() => setSkipModal({show: false, activityId: null, reason: ''})} className="flex-1 py-3 rounded-xl bg-slate-700 text-white font-medium">ยกเลิก</button>
-                                    <button onClick={confirmSkip} className="flex-1 py-3 rounded-xl bg-orange-500 text-white font-medium">บันทึกการข้าม</button>
+                                    <button onClick={confirmSkip} className="flex-1 py-3 rounded-xl bg-orange-500 text-white font-medium">บันทึก</button>
                                 </div>
                             </div>
                         </div>
@@ -306,18 +241,16 @@
             );
         }
 
-        // --- Settings Component ---
         function Settings({ activities, setActivities }) {
             const [form, setForm] = useState({ name: '', freqType: 'daily', freqDays: [], freqCount: 3, identity: '' });
             const [showArchived, setShowArchived] = useState(false);
-
             const days = [{ id: 1, label: 'จ.' }, { id: 2, label: 'อ.' }, { id: 3, label: 'พ.' }, { id: 4, label: 'พฤ.' }, { id: 5, label: 'ศ.' }, { id: 6, label: 'ส.' }, { id: 0, label: 'อา.' }];
 
             const handleSave = (e) => {
                 e.preventDefault();
                 if(!form.name.trim()) return;
                 setActivities([...activities, { ...form, id: generateId(), archived: false, createdAt: Date.now() }]);
-                setForm({ name: '', freqType: 'daily', freqDays: [], freqCount: 3, identity: '' }); // reset
+                setForm({ name: '', freqType: 'daily', freqDays: [], freqCount: 3, identity: '' });
             };
 
             const toggleArchive = (id) => {
@@ -326,7 +259,6 @@
 
             return (
                 <div className="fade-in space-y-8">
-                    {/* Add Form */}
                     <div className="bg-card p-5 rounded-3xl border border-slate-700">
                         <h2 className="text-lg font-semibold mb-4 flex items-center gap-2"><Icon name="settings" /> จัดการกิจกรรม</h2>
                         <form onSubmit={handleSave} className="space-y-4">
@@ -334,67 +266,48 @@
                                 <label className="block text-sm text-slate-400 mb-1">ชื่อกิจกรรม</label>
                                 <input required type="text" value={form.name} onChange={e => setForm({...form, name: e.target.value})} className="w-full bg-dark border border-slate-600 rounded-xl p-3 text-white focus:outline-none focus:border-primary" placeholder="เช่น อ่านหนังสือ 1 หน้า" />
                             </div>
-                            
                             <div>
-                                <label className="block text-sm text-slate-400 mb-1">Identity Label (ฉันคือใคร?)</label>
+                                <label className="block text-sm text-slate-400 mb-1">Identity Label</label>
                                 <input required type="text" value={form.identity} onChange={e => setForm({...form, identity: e.target.value})} className="w-full bg-dark border border-slate-600 rounded-xl p-3 text-white focus:outline-none focus:border-primary" placeholder="เช่น ฉันคือนักอ่านผู้กระหายความรู้" />
                             </div>
-
                             <div>
                                 <label className="block text-sm text-slate-400 mb-1">ความถี่</label>
                                 <div className="grid grid-cols-3 gap-2">
                                     <button type="button" onClick={() => setForm({...form, freqType: 'daily'})} className={`py-2 rounded-lg border text-sm transition-colors ${form.freqType === 'daily' ? 'bg-primary/20 border-primary text-primary' : 'border-slate-600 text-slate-400'}`}>ทุกวัน</button>
                                     <button type="button" onClick={() => setForm({...form, freqType: 'specific'})} className={`py-2 rounded-lg border text-sm transition-colors ${form.freqType === 'specific' ? 'bg-primary/20 border-primary text-primary' : 'border-slate-600 text-slate-400'}`}>เลือกวัน</button>
-                                    <button type="button" onClick={() => setForm({...form, freqType: 'weekly'})} className={`py-2 rounded-lg border text-sm transition-colors ${form.freqType === 'weekly' ? 'bg-primary/20 border-primary text-primary' : 'border-slate-600 text-slate-400'}`}>เป้าหมายสัปดาห์</button>
+                                    <button type="button" onClick={() => setForm({...form, freqType: 'weekly'})} className={`py-2 rounded-lg border text-sm transition-colors ${form.freqType === 'weekly' ? 'bg-primary/20 border-primary text-primary' : 'border-slate-600 text-slate-400'}`}>รายสัปดาห์</button>
                                 </div>
                             </div>
-
                             {form.freqType === 'specific' && (
                                 <div className="flex justify-between gap-1 mt-2">
                                     {days.map(d => (
-                                        <button key={d.id} type="button" 
-                                            onClick={() => {
-                                                const newDays = form.freqDays.includes(d.id) ? form.freqDays.filter(day => day !== d.id) : [...form.freqDays, d.id];
-                                                setForm({...form, freqDays: newDays});
-                                            }}
-                                            className={`w-10 h-10 rounded-full flex items-center justify-center text-sm transition-colors ${form.freqDays.includes(d.id) ? 'bg-primary text-dark font-bold' : 'bg-slate-800 text-slate-400'}`}
-                                        >{d.label}</button>
+                                        <button key={d.id} type="button" onClick={() => setForm({...form, freqDays: form.freqDays.includes(d.id) ? form.freqDays.filter(day => day !== d.id) : [...form.freqDays, d.id]})} className={`w-10 h-10 rounded-full flex items-center justify-center text-sm transition-colors ${form.freqDays.includes(d.id) ? 'bg-primary text-dark font-bold' : 'bg-slate-800 text-slate-400'}`}>{d.label}</button>
                                     ))}
                                 </div>
                             )}
-
                             {form.freqType === 'weekly' && (
                                 <div className="mt-2">
                                     <label className="block text-sm text-slate-400 mb-1">จำนวนครั้งต่อสัปดาห์</label>
                                     <input type="number" min="1" max="7" value={form.freqCount} onChange={e => setForm({...form, freqCount: parseInt(e.target.value)})} className="w-full bg-dark border border-slate-600 rounded-xl p-3 text-white focus:outline-none focus:border-primary" />
                                 </div>
                             )}
-
                             <button type="submit" className="w-full bg-primary text-dark font-bold py-3 rounded-xl hover:bg-emerald-400 transition-colors mt-4">บันทึกกิจกรรม</button>
                         </form>
                     </div>
 
-                    {/* Activity List */}
                     <div>
                         <div className="flex justify-between items-center mb-4">
                             <h2 className="text-lg font-semibold text-slate-200">รายการของคุณ</h2>
-                            <button onClick={() => setShowArchived(!showArchived)} className="text-sm text-slate-400 underline">
-                                {showArchived ? 'ซ่อนที่เก็บถาวร' : 'แสดงที่เก็บถาวร'}
-                            </button>
+                            <button onClick={() => setShowArchived(!showArchived)} className="text-sm text-slate-400 underline">{showArchived ? 'ซ่อนที่เก็บถาวร' : 'แสดงที่เก็บถาวร'}</button>
                         </div>
-                        
                         <div className="space-y-3">
                             {activities.filter(a => showArchived || !a.archived).map(a => (
                                 <div key={a.id} className={`p-4 rounded-xl border flex justify-between items-center ${a.archived ? 'bg-dark border-slate-800 opacity-60' : 'bg-card border-slate-700'}`}>
                                     <div>
                                         <h3 className="font-medium text-slate-100">{a.name}</h3>
-                                        <p className="text-xs text-slate-400 mt-1">
-                                            {a.freqType === 'daily' ? 'ทำทุกวัน' : a.freqType === 'weekly' ? `${a.freqCount} ครั้ง/สัปดาห์` : 'วันเฉพาะเจาะจง'} • {a.identity}
-                                        </p>
+                                        <p className="text-xs text-slate-400 mt-1">{a.freqType === 'daily' ? 'ทำทุกวัน' : a.freqType === 'weekly' ? `${a.freqCount} ครั้ง/สัปดาห์` : 'วันเฉพาะเจาะจง'} • {a.identity}</p>
                                     </div>
-                                    <button onClick={() => toggleArchive(a.id)} className="p-2 bg-slate-800 rounded-lg text-slate-400 hover:text-white" title="Archive">
-                                        <Icon name="archive" className="w-5 h-5" />
-                                    </button>
+                                    <button onClick={() => toggleArchive(a.id)} className="p-2 bg-slate-800 rounded-lg text-slate-400 hover:text-white"><Icon name="archive" className="w-5 h-5" /></button>
                                 </div>
                             ))}
                         </div>
@@ -403,49 +316,14 @@
             );
         }
 
-        // --- Reflection Component ---
         function Reflection({ reflections, setReflections }) {
             const today = getTodayStr();
             const isSunday = new Date().getDay() === 0;
             const [form, setForm] = useState({ date: today, identityScore: 0, fearObservation: '', nextSprint: '' });
-            const [isRecording, setIsRecording] = useState(false);
-
-            // Speech to Text function
-            const handleMicClick = () => {
-                const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-                if (!SpeechRecognition) {
-                    // หากเบราว์เซอร์ไม่รองรับ
-                    const manualText = window.prompt("เบราว์เซอร์ไม่รองรับพิมพ์ด้วยเสียง กรุณาพิมพ์ความกังวลของคุณ:");
-                    if(manualText) setForm(f => ({...f, fearObservation: f.fearObservation + ' ' + manualText}));
-                    return;
-                }
-                
-                const recognition = new SpeechRecognition();
-                recognition.lang = 'th-TH';
-                recognition.interimResults = false;
-                
-                recognition.onstart = () => setIsRecording(true);
-                recognition.onend = () => setIsRecording(false);
-                
-                recognition.onresult = (event) => {
-                    const transcript = event.results[0][0].transcript;
-                    setForm(f => ({ ...f, fearObservation: f.fearObservation + (f.fearObservation ? ' ' : '') + transcript }));
-                };
-
-                recognition.start();
-            };
 
             const handleSave = () => {
-                if(form.identityScore === 0) {
-                    // ใช้ Custom Message UI (จำลองแทน Alert ตามข้อกำหนด)
-                    const modal = document.createElement('div');
-                    modal.className = 'fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4';
-                    modal.innerHTML = `<div class="bg-card p-6 rounded-2xl border border-slate-700 max-w-sm w-full text-center"><h3 class="text-xl mb-4">โปรดให้คะแนน Identity Score</h3><button class="bg-primary text-dark px-6 py-2 rounded-xl font-bold w-full" onclick="this.parentElement.parentElement.remove()">ตกลง</button></div>`;
-                    document.body.appendChild(modal);
-                    return;
-                }
+                if(form.identityScore === 0) return alert('โปรดให้คะแนน Identity Score ก่อนบันทึก');
                 setReflections([{...form, id: generateId()}, ...reflections]);
-                // Reset form
                 setForm({ date: today, identityScore: 0, fearObservation: '', nextSprint: '' });
             };
 
@@ -455,62 +333,34 @@
                 <div className="fade-in space-y-6">
                     <div className="bg-gradient-to-r from-blue-900/50 to-indigo-900/50 p-6 rounded-3xl border border-blue-800/50">
                         <h2 className="text-2xl font-bold text-blue-300 mb-2">Sunday Reflection 🧘‍♂️</h2>
-                        <p className="text-sm text-slate-300 mb-6">ทบทวนตัวเองประจำสัปดาห์ ชำระล้างความกลัว และตั้งเป้าหมายสัปดาห์หน้า</p>
+                        <p className="text-sm text-slate-300 mb-6">ทบทวนตัวเองประจำสัปดาห์</p>
                         
-                        {!isSunday && <div className="bg-yellow-900/40 text-yellow-500 p-3 rounded-xl text-sm mb-6">ฟีเจอร์นี้ออกแบบมาเพื่อใช้วันอาทิตย์ แต่คุณสามารถบันทึกได้ทุกเมื่อที่ต้องการ</div>}
+                        {!isSunday && <div className="bg-yellow-900/40 text-yellow-500 p-3 rounded-xl text-sm mb-6">บันทึกได้แม้ไม่ใช่วันอาทิตย์</div>}
 
                         {existingToday ? (
                             <div className="bg-dark/50 p-6 rounded-2xl text-center border border-slate-700">
                                 <span className="text-4xl mb-2 block">🌟</span>
-                                <p className="text-emerald-400 font-medium">คุณได้ทำการสะท้อนผลของวันนี้ไปแล้ว</p>
-                                <p className="text-sm text-slate-400 mt-2">คะแนนความเชื่อมั่น: {existingToday.identityScore}/5</p>
+                                <p className="text-emerald-400 font-medium">คุณได้สะท้อนผลวันนี้แล้ว</p>
                             </div>
                         ) : (
                             <div className="space-y-6">
-                                {/* Identity Score */}
                                 <div>
-                                    <label className="block text-sm font-medium mb-3 text-slate-200">1. Identity Score (ความรู้สึกต่อตัวตนของคุณ)</label>
+                                    <label className="block text-sm font-medium mb-3 text-slate-200">1. Identity Score</label>
                                     <div className="flex gap-2 justify-center">
                                         {[1,2,3,4,5].map(score => (
-                                            <button 
-                                                key={score} 
-                                                onClick={() => setForm({...form, identityScore: score})}
-                                                className={`w-12 h-12 rounded-full text-lg font-bold transition-transform ${form.identityScore === score ? 'bg-blue-500 text-white scale-110 shadow-lg shadow-blue-500/50' : 'bg-slate-800 text-slate-400 hover:bg-slate-700'}`}
-                                            >{score}</button>
+                                            <button key={score} onClick={() => setForm({...form, identityScore: score})} className={`w-12 h-12 rounded-full text-lg font-bold transition-transform ${form.identityScore === score ? 'bg-blue-500 text-white scale-110 shadow-lg' : 'bg-slate-800 text-slate-400'}`}>{score}</button>
                                         ))}
                                     </div>
                                 </div>
-
-                                {/* Fear Observation */}
                                 <div>
-                                    <div className="flex justify-between items-end mb-2">
-                                        <label className="block text-sm font-medium text-slate-200">2. เฝ้ามองความกลัว (Fear Observation)</label>
-                                        <button onClick={handleMicClick} className={`p-2 rounded-full flex items-center justify-center transition-colors ${isRecording ? 'bg-red-500 animate-pulse text-white' : 'bg-slate-700 text-slate-300'}`}>
-                                            <Icon name="mic" className="w-4 h-4" />
-                                        </button>
-                                    </div>
-                                    <textarea 
-                                        value={form.fearObservation} 
-                                        onChange={e => setForm({...form, fearObservation: e.target.value})}
-                                        className="w-full bg-dark/80 border border-slate-600 rounded-xl p-3 text-white focus:outline-none focus:border-blue-500 h-24 resize-none" 
-                                        placeholder="สัปดาห์นี้มีความกังวลหรือเสียงต่อต้านอะไรเกิดขึ้นบ้าง? (พิมพ์หรือกดอัดเสียง)" 
-                                    />
+                                    <label className="block text-sm font-medium text-slate-200 mb-2">2. Fear Observation</label>
+                                    <textarea value={form.fearObservation} onChange={e => setForm({...form, fearObservation: e.target.value})} className="w-full bg-dark/80 border border-slate-600 rounded-xl p-3 text-white focus:outline-none focus:border-blue-500 h-24 resize-none" placeholder="บันทึกความกังวล..." />
                                 </div>
-
-                                {/* Next Sprint */}
                                 <div>
-                                    <label className="block text-sm font-medium mb-2 text-slate-200">3. เป้าหมายปรับปรุงสัปดาห์หน้า (Next Sprint)</label>
-                                    <textarea 
-                                        value={form.nextSprint} 
-                                        onChange={e => setForm({...form, nextSprint: e.target.value})}
-                                        className="w-full bg-dark/80 border border-slate-600 rounded-xl p-3 text-white focus:outline-none focus:border-blue-500 h-20 resize-none" 
-                                        placeholder="ออกแบบระบบหรือพฤติกรรมที่จะทำในสัปดาห์หน้า..." 
-                                    />
+                                    <label className="block text-sm font-medium mb-2 text-slate-200">3. Next Sprint</label>
+                                    <textarea value={form.nextSprint} onChange={e => setForm({...form, nextSprint: e.target.value})} className="w-full bg-dark/80 border border-slate-600 rounded-xl p-3 text-white focus:outline-none focus:border-blue-500 h-20 resize-none" placeholder="เป้าหมายสัปดาห์หน้า..." />
                                 </div>
-
-                                <button onClick={handleSave} className="w-full bg-gradient-to-r from-blue-500 to-indigo-600 text-white font-bold py-4 rounded-xl hover:opacity-90 transition-opacity shadow-lg">
-                                    บันทึก Reflection
-                                </button>
+                                <button onClick={handleSave} className="w-full bg-gradient-to-r from-blue-500 to-indigo-600 text-white font-bold py-4 rounded-xl hover:opacity-90">บันทึก Reflection</button>
                             </div>
                         )}
                     </div>
@@ -518,121 +368,48 @@
             );
         }
 
-        // --- Stats & Visualization Component ---
         function Stats({ activities, records, reflections }) {
-            // Generate Heatmap Data (Last 28 days)
             const heatmapDays = useMemo(() => {
                 const days = [];
                 for(let i=27; i>=0; i--) {
-                    const d = new Date();
-                    d.setDate(d.getDate() - i);
-                    const dateStr = d.toISOString().split('T')[0];
-                    
-                    // Simple completion ratio
-                    const dayRecords = records.filter(r => r.date === dateStr && r.status === 'completed');
-                    const count = dayRecords.length;
-                    
-                    // Determine intensity color
-                    let color = 'bg-slate-800'; // level 0
-                    if (count === 1) color = 'bg-emerald-900/60'; // level 1
-                    else if (count === 2) color = 'bg-emerald-600/80'; // level 2
-                    else if (count >= 3) color = 'bg-emerald-400'; // level 3
-
-                    days.push({ date: dateStr, color });
+                    const d = new Date(); d.setDate(d.getDate() - i);
+                    const count = records.filter(r => r.date === d.toISOString().split('T')[0] && r.status === 'completed').length;
+                    let color = 'bg-slate-800';
+                    if (count === 1) color = 'bg-emerald-900/60'; else if (count === 2) color = 'bg-emerald-600/80'; else if (count >= 3) color = 'bg-emerald-400';
+                    days.push({ color });
                 }
                 return days;
             }, [records]);
 
-            // Simple Fear Tagging (นับคำซ้ำง่ายๆ จาก Reflection)
-            const fearTags = useMemo(() => {
-                const text = reflections.map(r => r.fearObservation).join(' ');
-                // แยกคำไทยเบื้องต้นด้วยช่องว่าง (ตัวอย่างอย่างง่าย)
-                const words = text.split(/\s+/).filter(w => w.length > 2); 
-                const counts = {};
-                words.forEach(w => counts[w] = (counts[w] || 0) + 1);
-                
-                return Object.entries(counts)
-                    .sort((a,b) => b[1] - a[1])
-                    .slice(0, 5) // เอา 5 อันดับแรก
-                    .map(item => ({ word: item[0], count: item[1] }));
-            }, [reflections]);
-
-            // Data Export
             const handleExport = () => {
-                const data = {
-                    activities: JSON.parse(localStorage.getItem('st_activities') || '[]'),
-                    records: JSON.parse(localStorage.getItem('st_records') || '[]'),
-                    reflections: JSON.parse(localStorage.getItem('st_reflections') || '[]')
-                };
-                const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-                const url = URL.createObjectURL(blob);
+                const data = { activities, records, reflections };
                 const a = document.createElement('a');
-                a.href = url;
-                a.download = `self-trust-data-${new Date().toISOString().split('T')[0]}.json`;
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-                URL.revokeObjectURL(url);
+                a.href = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }));
+                a.download = `self-trust-data.json`;
+                document.body.appendChild(a); a.click(); document.body.removeChild(a);
             };
 
             return (
                 <div className="fade-in space-y-8">
-                    {/* Heatmap */}
                     <div className="bg-card p-5 rounded-3xl border border-slate-700">
                         <h2 className="text-lg font-semibold mb-4 text-slate-200">Monthly Consistency</h2>
                         <div className="grid grid-cols-7 gap-2">
-                            {heatmapDays.map((day, i) => (
-                                <div key={i} className={`w-full aspect-square rounded-md ${day.color}`} title={day.date}></div>
-                            ))}
-                        </div>
-                        <div className="flex justify-end gap-2 mt-3 text-xs text-slate-400 items-center">
-                            <span>Less</span>
-                            <div className="w-3 h-3 rounded-sm bg-slate-800"></div>
-                            <div className="w-3 h-3 rounded-sm bg-emerald-900/60"></div>
-                            <div className="w-3 h-3 rounded-sm bg-emerald-600/80"></div>
-                            <div className="w-3 h-3 rounded-sm bg-emerald-400"></div>
-                            <span>More</span>
+                            {heatmapDays.map((day, i) => <div key={i} className={`w-full aspect-square rounded-md ${day.color}`}></div>)}
                         </div>
                     </div>
-
-                    {/* Fear Tagging */}
-                    <div className="bg-card p-5 rounded-3xl border border-slate-700">
-                        <h2 className="text-lg font-semibold mb-4 text-slate-200">Fear Tagging (คำที่พบบ่อย)</h2>
-                        {fearTags.length === 0 ? (
-                            <p className="text-slate-500 text-sm">ยังไม่มีข้อมูลสะท้อนผลเพียงพอ</p>
-                        ) : (
-                            <div className="flex flex-wrap gap-2">
-                                {fearTags.map((tag, i) => (
-                                    <span key={i} className="bg-slate-800 text-orange-300 border border-orange-900/50 px-3 py-1 rounded-full text-sm">
-                                        #{tag.word} <span className="opacity-50 text-xs ml-1">({tag.count})</span>
-                                    </span>
-                                ))}
-                            </div>
-                        )}
-                    </div>
-
-                    {/* Export */}
                     <div>
-                        <button onClick={handleExport} className="w-full bg-slate-800 border border-slate-600 text-slate-300 font-medium py-4 rounded-xl hover:bg-slate-700 transition-colors flex items-center justify-center gap-2">
-                            <Icon name="archive" className="w-5 h-5" /> Export Data (JSON)
-                        </button>
+                        <button onClick={handleExport} className="w-full bg-slate-800 border border-slate-600 text-slate-300 font-medium py-4 rounded-xl hover:bg-slate-700 transition-colors flex items-center justify-center gap-2"><Icon name="archive" className="w-5 h-5" /> Export Data (JSON)</button>
                     </div>
                 </div>
             );
         }
 
-        const root = ReactDOM.createRoot(document.getElementById('root'));
-        root.render(<App />);
-    </script>
-
-    <!-- Register Service Worker for PWA -->
-    <script>
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('./sw.js')
-                    .then(reg => console.log('Service Worker Registered'))
-                    .catch(err => console.log('Service Worker Registration Failed', err));
-            });
+        try {
+            const root = ReactDOM.createRoot(document.getElementById('root'));
+            root.render(<App />);
+        } catch (error) {
+            console.error("React Initialization Error:", error);
+            document.getElementById('root').innerHTML = `<div style="color:red; padding:20px;"><h2>System Error</h2><p>${error.message}</p></div>`;
         }
     </script>
 </body>
