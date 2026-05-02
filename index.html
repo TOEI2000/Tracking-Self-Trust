@@ -1,27 +1,3 @@
-ต้องขออภัยอย่างสูงเลยครับ! อาการจอมืดแบบนี้ ฟันธงได้เลยว่าเกิดจาก **"โค้ดผิดพลาด 1 จุด"** ตอนที่ผมเขียนวาดไอคอนรูป Calendar ที่เพิ่มเข้าไปใหม่ครับ (ผมลืมใส่ตัวครอบ `<></>` ให้มัน อาการเลยเหมือนตอนแรกเป๊ะเลยครับ แฮะๆ 😅)
-
-วิธีแก้รอบนี้ง่ายมากครับ **ไม่ต้อง Copy โค้ดใหม่ทั้งหมด** (จะได้ไม่ต้องเหนื่อยเอา API Key มาใส่ใหม่ด้วยครับ)
-
-### วิธีแก้ไขแบบไวที่สุด:
-
-1. เข้าไปที่ไฟล์ `index.html` ใน GitHub แล้วกดปุ่ม Edit (รูปดินสอ)
-2. เลื่อนลงมาหาบรรทัดที่เขียนว่า `calendar: ` (ประมาณบรรทัดที่ 66-67)
-3. **โค้ดเดิมที่ผิดมันจะเป็นแบบนี้ครับ:**
-   ```javascript
-   calendar: <rect x="3" y="4" width="18" height="18" rx="2" ry="2" /><path d="M16 2v4M8 2v4M3 10h18" />
-   ```
-4. **ให้คุณเติม `<>` ไว้ข้างหน้าสุด และเติม `</>` ไว้ข้างหลังสุด** ให้กลายเป็นแบบนี้ครับ:
-   ```javascript
-   calendar: <><rect x="3" y="4" width="18" height="18" rx="2" ry="2" /><path d="M16 2v4M8 2v4M3 10h18" /></>
-   
-```
-5. กดปุ่ม **Commit changes** บันทึกแล้วรอ 1 นาที กด Refresh หน้าเว็บ แอปจะกลับมาทำงานทันทีครับ!
-
----
-
-*(แต่ถ้าคุณเผลอลบโค้ดไปแล้ว หรืออยาก Copy วางใหม่ทั้งก้อน ผมแก้จุดนั้นให้เรียบร้อยแล้วในโค้ดด้านล่างนี้ครับ **อย่าลืมเอา API_KEY กับ CLIENT_ID มาใส่ตรงบรรทัดที่ 46-47 อีกรอบนะครับ**)*
-
-```html
 <!DOCTYPE html>
 <html lang="th">
 <head>
@@ -33,9 +9,7 @@
     <meta name="theme-color" content="#0f172a">
 
     <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = { theme: { extend: { colors: { primary: '#10b981', dark: '#0f172a', card: '#1e293b' } } } }
-    </script>
+    <script>tailwind.config = { theme: { extend: { colors: { primary: '#10b981', dark: '#0f172a', card: '#1e293b' } } } }</script>
 
     <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js"></script>
     <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js"></script>
@@ -45,7 +19,7 @@
     <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore-compat.js"></script>
 
-    <!-- Google Calendar API & Identity Services -->
+    <!-- Google Calendar API -->
     <script src="https://apis.google.com/js/api.js"></script>
     <script src="https://accounts.google.com/gsi/client"></script>
 
@@ -88,7 +62,7 @@
         // --- Helpers ---
         const generateId = () => Math.random().toString(36).substr(2, 9);
         const getTodayStr = () => new Date().toLocaleDateString('en-CA'); 
-        const getMondayTime = (dateStr) => { const date = new Date(dateStr); const day = date.getDay() || 7; date.setHours(0,0,0,0); date.setDate(date.getDate() - day + 1); return date.getTime(); };
+        const getMondayTime = (dateStr) => { const d = new Date(dateStr); const day = d.getDay()||7; d.setHours(0,0,0,0); d.setDate(d.getDate()-day+1); return d.getTime(); };
         const isSameWeek = (d1, d2) => getMondayTime(d1) === getMondayTime(d2);
 
         const Icon = ({ name, className = "w-6 h-6" }) => {
@@ -113,12 +87,10 @@
             const [reflections, setReflections] = useState([]);
             const [isInitialLoadDone, setIsInitialLoadDone] = useState(false);
 
-            // Google API State
             const [isGapiLoaded, setIsGapiLoaded] = useState(false);
             const [tokenClient, setTokenClient] = useState(null);
             const [isCalAuthorized, setIsCalAuthorized] = useState(false);
 
-            // โหลด Firebase
             useEffect(() => {
                 userDocRef.get().then(doc => {
                     if (doc.exists) {
@@ -136,7 +108,6 @@
                 userDocRef.set({ activities, records, reflections });
             }, [activities, records, reflections, isInitialLoadDone]);
 
-            // โหลด Google API
             useEffect(() => {
                 const initGapi = () => {
                     gapi.client.init({ apiKey: GOOGLE_API_KEY, discoveryDocs: [DISCOVERY_DOC] })
@@ -178,26 +149,17 @@
                 }
             };
 
-            // ฟังก์ชันเพิ่ม Event ลง Calendar
             const addEventToCalendar = async (activityName) => {
                 if (!isCalAuthorized) return; 
-                
                 const event = {
                     'summary': `✅ ${activityName}`,
                     'description': 'สร้างจาก Self-Trust App',
                     'start': { 'dateTime': new Date().toISOString(), 'timeZone': 'Asia/Bangkok' },
                     'end': { 'dateTime': new Date(new Date().getTime() + 30*60000).toISOString(), 'timeZone': 'Asia/Bangkok' },
                 };
-
                 try {
-                    await gapi.client.calendar.events.insert({
-                        'calendarId': 'primary',
-                        'resource': event,
-                    });
-                    console.log("บันทึกลง Calendar สำเร็จ!");
-                } catch (err) {
-                    console.error("Calendar Insert Error: ", err);
-                }
+                    await gapi.client.calendar.events.insert({ 'calendarId': 'primary', 'resource': event });
+                } catch (err) { console.error("Calendar Insert Error: ", err); }
             };
 
             return (
@@ -259,10 +221,7 @@
                     setRecords(records.filter(r => r.id !== existing.id));
                 } else {
                     setRecords([...records, { id: generateId(), activityId: activity.id, date: selectedDate, status: 'completed', timestamp: Date.now() }]);
-                    
-                    if (selectedDate === getTodayStr()) {
-                        addEventToCalendar(activity.name);
-                    }
+                    if (selectedDate === getTodayStr()) addEventToCalendar(activity.name);
                 }
             };
 
@@ -286,19 +245,13 @@
                             const recordOnDay = records.find(r => r.activityId === activity.id && r.date === selectedDate);
                             const doneToday = recordOnDay?.status === 'completed';
                             const isSkipped = recordOnDay?.status === 'skipped';
-                            
                             const totalDoneThisWeek = records.filter(r => r.activityId === activity.id && r.status === 'completed' && isSameWeek(r.date, selectedDate)).length;
 
                             let label = "";
                             let isGoalMet = false;
-
                             if (activity.freqType === 'weekly') {
                                 isGoalMet = totalDoneThisWeek >= activity.freqCount;
-                                if (isGoalMet) {
-                                    label = `(${activity.freqCount}/${activity.freqCount})`;
-                                } else {
-                                    label = `(${doneToday ? totalDoneThisWeek : totalDoneThisWeek + 1}/${activity.freqCount})`;
-                                }
+                                label = isGoalMet ? `(${activity.freqCount}/${activity.freqCount})` : `(${doneToday ? totalDoneThisWeek : totalDoneThisWeek + 1}/${activity.freqCount})`;
                             }
 
                             const isLocked = isGoalMet && !doneToday;
@@ -308,9 +261,7 @@
                                 <div key={activity.id} className={"p-4 rounded-2xl border transition-all " + (shouldStrike ? "bg-primary/10 border-primary/30" : isSkipped ? "opacity-50" : "bg-card border-slate-700")}>
                                     <div className="flex items-center justify-between">
                                         <div className="flex items-center gap-4 flex-1">
-                                            <button 
-                                                onClick={() => handleToggle(activity, isLocked)} 
-                                                className={"w-9 h-9 rounded-full border-2 flex items-center justify-center " + (doneToday ? "bg-primary border-primary text-dark" : isLocked ? "border-slate-800 bg-slate-800 text-slate-600 cursor-not-allowed" : "border-slate-500")}>
+                                            <button onClick={() => handleToggle(activity, isLocked)} className={"w-9 h-9 rounded-full border-2 flex items-center justify-center " + (doneToday ? "bg-primary border-primary text-dark" : isLocked ? "border-slate-800 bg-slate-800 text-slate-600 cursor-not-allowed" : "border-slate-500")}>
                                                 {doneToday && <Icon name="check" className="w-6 h-6" />}
                                                 {isLocked && <span className="text-[8px] font-bold">DONE</span>}
                                             </button>
@@ -332,33 +283,26 @@
 
         function Settings({ activities, setActivities, isCalAuthorized, handleAuthClick, handleSignoutClick }) {
             const [form, setForm] = useState({ name: '', freqType: 'daily', freqDays: [], freqCount: 1, identity: '' });
-            const days = [{ id: 1, label: 'จ.' }, { id: 2, label: 'อ.' }, { id: 3, label: 'พ.' }, { id: 4, label: 'พฤ.' }, { id: 5, label: 'ศ.' }, { id: 6, label: 'ส.' }, { id: 0, label: 'อา.' }];
             return (
                 <div className="fade-in space-y-6 pb-10">
                     <div className="bg-gradient-to-r from-blue-900/30 to-indigo-900/30 p-5 rounded-3xl border border-blue-800/50 flex flex-col items-center justify-center text-center">
                         <Icon name="calendar" className="w-8 h-8 text-blue-400 mb-2" />
                         <h2 className="text-lg font-semibold text-slate-200">Google Calendar API</h2>
                         <p className="text-xs text-slate-400 mb-4">ส่งประวัติการทำกิจกรรมไปลงปฏิทินอัตโนมัติ</p>
-                        
                         {!isCalAuthorized ? (
-                            <button onClick={handleAuthClick} className="bg-white text-slate-900 px-6 py-2 rounded-full text-sm font-bold shadow-lg flex items-center gap-2">
-                                เชื่อมต่อบัญชี Google
-                            </button>
+                            <button onClick={handleAuthClick} className="bg-white text-slate-900 px-6 py-2 rounded-full text-sm font-bold shadow-lg">เชื่อมต่อบัญชี Google</button>
                         ) : (
                             <div className="flex flex-col items-center">
-                                <span className="text-emerald-400 text-sm font-medium mb-3 flex items-center gap-1">✅ เชื่อมต่อเรียบร้อยแล้ว</span>
-                                <button onClick={handleSignoutClick} className="bg-slate-800 text-slate-400 px-4 py-1.5 rounded-full text-xs hover:text-white border border-slate-700">
-                                    ยกเลิกการเชื่อมต่อ
-                                </button>
+                                <span className="text-emerald-400 text-sm font-medium mb-3">✅ เชื่อมต่อเรียบร้อยแล้ว</span>
+                                <button onClick={handleSignoutClick} className="bg-slate-800 text-slate-400 px-4 py-1.5 rounded-full text-xs">ยกเลิกการเชื่อมต่อ</button>
                             </div>
                         )}
                     </div>
-
                     <div className="bg-card p-5 rounded-3xl border border-slate-700">
                         <h2 className="text-lg font-semibold mb-4">ตั้งค่ากิจกรรม</h2>
                         <div className="space-y-4">
                             <input type="text" value={form.name} onChange={e => setForm({...form, name: e.target.value})} className="w-full bg-dark border border-slate-600 rounded-xl p-3 text-sm" placeholder="ชื่อกิจกรรม" />
-                            <input type="text" value={form.identity} onChange={e => setForm({...form, identity: e.target.value})} className="w-full bg-dark border border-slate-600 rounded-xl p-3 text-sm" placeholder="Identity Label (ฉันคือ...)" />
+                            <input type="text" value={form.identity} onChange={e => setForm({...form, identity: e.target.value})} className="w-full bg-dark border border-slate-600 rounded-xl p-3 text-sm" placeholder="Identity Label" />
                             <div className="flex gap-2">
                                 {['daily', 'specific', 'weekly'].map(type => (
                                     <button key={type} onClick={() => setForm({...form, freqType: type})} className={"flex-1 py-2 rounded-lg border text-xs capitalize " + (form.freqType === type ? "bg-primary/20 border-primary text-primary" : "border-slate-600 text-slate-500")}>{type}</button>
@@ -369,11 +313,8 @@
                         </div>
                     </div>
                     {activities.filter(a=>!a.archived).map(a => (
-                        <div key={a.id} className="p-4 bg-card rounded-xl border border-slate-700 flex justify-between items-center text-sm shadow-sm">
-                            <div className="flex flex-col">
-                                <span className="font-bold">{a.name}</span>
-                                <span className="text-[10px] text-slate-500">{a.freqType} {a.freqType==='weekly' && `(${a.freqCount} ครั้ง/สัปดาห์)`}</span>
-                            </div>
+                        <div key={a.id} className="p-4 bg-card rounded-xl border border-slate-700 flex justify-between items-center text-sm">
+                            <div className="flex flex-col"><span className="font-bold">{a.name}</span><span className="text-[10px] text-slate-500">{a.freqType}</span></div>
                             <button onClick={() => setActivities(activities.map(x=>x.id===a.id?{...x,archived:true}:x))} className="p-2 text-slate-500 hover:text-red-400">ลบ</button>
                         </div>
                     ))}
@@ -388,8 +329,37 @@
                     <h2 className="text-xl font-bold mb-6 text-center text-emerald-400">Sunday Reflection</h2>
                     <div className="flex gap-3 justify-center mb-10">
                         {[1,2,3,4,5].map(s => (
-                            <button key={s} onClick={() => setScore(s)} className={"w-12 h-12 rounded-full font-bold transition-all " + (score === s ? "bg-primary text-dark shadow-lg scale-110" : "bg-slate-800 text-slate-500")}>{s}</button>
+                            <button key={s} onClick={() => setScore(s)} className={"w-12 h-12 rounded-full font-bold transition-all " + (score === s ? "bg-primary text-dark scale-110" : "bg-slate-800 text-slate-500")}>{s}</button>
                         ))}
                     </div>
-                    <button onClick={() => { if(score
-```
+                    <button onClick={() => { if(score) { setReflections([{id:generateId(), date:getTodayStr(), identityScore:score}, ...reflections]); setScore(0); alert('บันทึกเรียบร้อย!'); } }} className="w-full bg-primary text-dark font-bold py-4 rounded-xl">บันทึกผลสะท้อนตนเอง</button>
+                </div>
+            );
+        }
+
+        function Stats({ activities, records, reflections }) {
+            const allDates = [...new Set([...records.map(r => r.date), ...reflections.map(r => r.date)])].sort((a,b) => new Date(b) - new Date(a));
+            return (
+                <div className="fade-in space-y-4 pb-20">
+                    {allDates.map(date => (
+                        <div key={date} className="bg-card p-4 rounded-2xl border border-slate-700 shadow-md">
+                            <h3 className="text-primary font-bold text-xs mb-3 border-b border-slate-800 pb-2">{new Date(date).toLocaleDateString('th-TH',{dateStyle:'medium'})}</h3>
+                            <div className="space-y-1">
+                                {records.filter(r => r.date === date).map(r => (
+                                    <div key={r.id} className="text-sm text-slate-300 flex items-center gap-2">
+                                        <span className="text-[10px]">{r.status === 'completed' ? '✅' : '⏭️'}</span>
+                                        <span>{activities.find(a=>a.id===r.activityId)?.name}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    ))}
+                    {allDates.length === 0 && <div className="text-center text-slate-600 mt-20">ยังไม่มีข้อมูลในระบบ</div>}
+                </div>
+            );
+        }
+
+        ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+    </script>
+</body>
+</html>
